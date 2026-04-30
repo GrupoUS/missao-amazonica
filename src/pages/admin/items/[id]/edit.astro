@@ -1,0 +1,185 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Input from '@/components/ui/Input.astro';
+import Select from '@/components/ui/Select.astro';
+import Textarea from '@/components/ui/Textarea.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit/log';
+import { parseBRLToCents, formatBRL } from '@/lib/format/currency';
+import { slugify } from '@/lib/utils';
+
+export const prerender = false;
+
+const { id } = Astro.params;
+if (!id) return Astro.redirect('/admin/items', 302);
+
+const admin = getSupabaseAdmin();
+const user = Astro.locals.user;
+
+const { data: item } = await admin
+  .from('donation_items')
+  .select('*')
+  .eq('id', id)
+  .maybeSingle();
+
+if (!item) return Astro.redirect('/admin/items?notfound=1', 302);
+
+const { data: missions } = await admin.from('missions').select('id, title').eq('is_active', true);
+const { data: categories } = await admin.from('categories').select('id, name').order('sort_order');
+
+let formError: string | null = null;
+let formOk: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const title = String(formData.get('title') ?? '').trim();
+  const slug = String(formData.get('slug') ?? '').trim() || slugify(title);
+  const description = String(formData.get('description') ?? '').trim();
+  const missionId = String(formData.get('mission_id') ?? '');
+  const categoryId = String(formData.get('category_id') ?? '') || null;
+  const urgency = String(formData.get('urgency') ?? 'medium');
+  const imageUrl = String(formData.get('image_url') ?? '').trim() || null;
+  const imageType = String(formData.get('image_type') ?? 'illustrative');
+  const targetCents = parseBRLToCents(String(formData.get('target_amount') ?? '')) ?? 0;
+  const status = String(formData.get('status') ?? 'draft');
+
+  if (!title || !missionId) {
+    formError = 'Título e missão são obrigatórios.';
+  } else {
+    const before = { ...item };
+    const { error } = await admin
+      .from('donation_items')
+      .update({
+        title,
+        slug,
+        description: description || null,
+        mission_id: missionId,
+        category_id: categoryId,
+        urgency: urgency as 'low' | 'medium' | 'high' | 'urgent',
+        image_url: imageUrl,
+        image_type: imageType as 'real' | 'illustrative',
+        target_amount_cents: targetCents,
+        status: status as 'draft' | 'published' | 'archived' | 'completed',
+        approved_by: status === 'published' && item.status !== 'published' ? user?.id ?? null : item.approved_by,
+        approved_at: status === 'published' && item.status !== 'published' ? new Date().toISOString() : item.approved_at,
+      })
+      .eq('id', id);
+
+    if (error) {
+      formError = error.message;
+    } else {
+      formOk = 'Projeto atualizado com sucesso.';
+      await logAudit({
+        actorId: user?.id ?? null,
+        action: 'donation_item.updated',
+        entityType: 'donation_item',
+        entityId: id,
+        before: before as never,
+        after: { title, slug, status, target_amount_cents: targetCents } as never,
+      });
+      Object.assign(item, { title, slug, description, status, urgency, image_url: imageUrl, image_type: imageType, target_amount_cents: targetCents, mission_id: missionId, category_id: categoryId });
+    }
+  }
+}
+
+const targetDisplay = item.target_amount_cents
+  ? formatBRL(item.target_amount_cents).replace('R$', '').trim()
+  : '';
+---
+
+<AdminLayout title={`Editar · ${item.title}`} activeNav="projetos">
+  <nav class="type-caption text-on-surface-variant mb-md flex items-center gap-2">
+    <a href="/admin/items" class="hover:text-primary-container">Projetos</a>
+    <Icon name="chevron_right" size={12} />
+    <span class="text-on-surface">{item.title}</span>
+  </nav>
+
+  <header class="flex justify-between items-end mb-xl gap-md">
+    <div>
+      <p class="type-label text-on-surface-variant mb-xs">Editar projeto</p>
+      <h2 class="font-display type-h2 text-on-surface">{item.title}</h2>
+    </div>
+    <a
+      href={`/doar/${item.slug}`}
+      target="_blank"
+      rel="noopener"
+      class="border border-outline-variant text-on-surface-variant px-md py-2 rounded-lg type-label hover:bg-surface-container-low inline-flex items-center gap-2"
+    >
+      <Icon name="visibility" size={16} /> Ver no site
+    </a>
+  </header>
+
+  <Card class="p-xl">
+    <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-md">
+      {formError && (
+        <div role="alert" class="md:col-span-2 bg-error-container text-on-error-container px-md py-sm rounded-lg type-label">
+          {formError}
+        </div>
+      )}
+      {formOk && (
+        <div role="status" class="md:col-span-2 bg-secondary-container text-on-secondary-container px-md py-sm rounded-lg type-label">
+          {formOk}
+        </div>
+      )}
+
+      <Input label="Título" name="title" required value={item.title} maxlength={200} />
+      <Input label="Slug" name="slug" value={item.slug} maxlength={120} />
+
+      <Select label="Missão" name="mission_id" required>
+        {missions?.map((m) => (
+          <option value={m.id} selected={m.id === item.mission_id}>{m.title}</option>
+        ))}
+      </Select>
+      <Select label="Categoria" name="category_id">
+        <option value="">— Sem categoria —</option>
+        {categories?.map((c) => (
+          <option value={c.id} selected={c.id === item.category_id}>{c.name}</option>
+        ))}
+      </Select>
+
+      <Select label="Urgência" name="urgency">
+        <option value="low" selected={item.urgency === 'low'}>Baixa</option>
+        <option value="medium" selected={item.urgency === 'medium'}>Média</option>
+        <option value="high" selected={item.urgency === 'high'}>Alta</option>
+        <option value="urgent" selected={item.urgency === 'urgent'}>Urgente</option>
+      </Select>
+      <Input
+        label="Meta (R$)"
+        name="target_amount"
+        value={targetDisplay}
+        inputmode="decimal"
+        hint="Não altera o total já arrecadado."
+      />
+
+      <Input label="URL da imagem" name="image_url" value={item.image_url ?? ''} type="url" />
+      <Select label="Tipo da imagem" name="image_type">
+        <option value="illustrative" selected={item.image_type === 'illustrative'}>Ilustrativa</option>
+        <option value="real" selected={item.image_type === 'real'}>Real</option>
+      </Select>
+
+      <div class="md:col-span-2">
+        <Textarea label="Descrição" name="description" rows={6}>
+          {item.description ?? ''}
+        </Textarea>
+      </div>
+
+      <Select label="Status" name="status">
+        <option value="draft" selected={item.status === 'draft'}>Rascunho</option>
+        <option value="published" selected={item.status === 'published'}>Publicado</option>
+        <option value="archived" selected={item.status === 'archived'}>Arquivado</option>
+        <option value="completed" selected={item.status === 'completed'}>Concluído</option>
+      </Select>
+
+      <div class="md:col-span-2 flex justify-end gap-md mt-md">
+        <a href="/admin/items" class="border border-outline-variant text-on-surface-variant px-md py-sm rounded-lg type-label hover:bg-surface-container-low">
+          Voltar
+        </a>
+        <button type="submit" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label font-semibold shadow-cta hover:opacity-90">
+          Salvar alterações
+        </button>
+      </div>
+    </form>
+  </Card>
+</AdminLayout>

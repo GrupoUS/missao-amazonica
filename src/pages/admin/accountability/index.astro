@@ -1,0 +1,112 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Icon from '@/components/ui/Icon.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { formatDate } from '@/lib/format/date';
+import { asAccountabilityStatus } from '@/lib/supabase/aliases';
+import { accountabilityLabel, accountabilityToTone } from '@/components/ui/badge-helpers';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+const { data: entries } = await admin
+  .from('accountability_entries')
+  .select(`
+    id, title, status, amount_cents, is_public, created_at, item_id,
+    donation_items(title, slug)
+  `)
+  .order('created_at', { ascending: false })
+  .limit(200);
+---
+
+<AdminLayout title="Transparência · Admin" activeNav="transparencia">
+  <header class="flex justify-between items-end mb-xl flex-wrap gap-md">
+    <div>
+      <p class="type-label text-on-surface-variant mb-xs">Prestações de conta</p>
+      <h2 class="font-display type-h2 text-on-surface">Transparência</h2>
+    </div>
+    <a
+      href="/admin/accountability/new"
+      class="bg-primary-container text-on-primary type-label px-md py-2 rounded-lg flex items-center gap-2 hover:opacity-90 shadow-card"
+    >
+      <Icon name="add_circle" size={16} />
+      Nova entrada
+    </a>
+  </header>
+
+  {(!entries || entries.length === 0) ? (
+    <EmptyState
+      icon="receipt_long"
+      title="Sem prestações registradas"
+      description="Adicione a primeira entrada para mostrar transparência aos doadores."
+    >
+      <a href="/admin/accountability/new" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label hover:opacity-90">
+        Nova entrada
+      </a>
+    </EmptyState>
+  ) : (
+    <Card class="overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-bright border-b border-outline-variant/30">
+              <th class="py-sm px-md type-label text-on-surface-variant">Título</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Projeto</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Status</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Valor</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Público</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Data</th>
+              <th class="py-sm px-md type-label text-on-surface-variant text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/20">
+            {entries.map((e) => {
+              const status = asAccountabilityStatus(e.status);
+              return (
+                <tr class="hover:bg-surface-container-low transition-colors">
+                  <td class="py-3 px-md type-body text-on-surface">{e.title}</td>
+                  <td class="py-3 px-md type-body text-on-surface-variant">
+                    {e.donation_items?.title ?? '— Reserva —'}
+                  </td>
+                  <td class="py-3 px-md">
+                    <Badge tone={accountabilityToTone(status)}>{accountabilityLabel(status)}</Badge>
+                  </td>
+                  <td class="py-3 px-md type-body text-on-surface font-medium">
+                    {e.amount_cents != null ? formatBRL(e.amount_cents) : '—'}
+                  </td>
+                  <td class="py-3 px-md">
+                    {e.is_public ? (
+                      <span class="text-secondary inline-flex items-center gap-1 type-caption">
+                        <Icon name="check_circle" size={12} /> Público
+                      </span>
+                    ) : (
+                      <span class="text-on-surface-variant inline-flex items-center gap-1 type-caption">
+                        <Icon name="person_off" size={12} /> Interno
+                      </span>
+                    )}
+                  </td>
+                  <td class="py-3 px-md type-caption text-on-surface-variant whitespace-nowrap">
+                    {formatDate(e.created_at)}
+                  </td>
+                  <td class="py-3 px-md text-right">
+                    <a
+                      href={`/admin/accountability/${e.id}/edit`}
+                      class="p-1.5 text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low rounded transition-colors inline-flex"
+                      title="Editar"
+                    >
+                      <Icon name="edit" size={16} />
+                    </a>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )}
+</AdminLayout>

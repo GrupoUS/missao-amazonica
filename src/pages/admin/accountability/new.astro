@@ -1,0 +1,156 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Input from '@/components/ui/Input.astro';
+import Select from '@/components/ui/Select.astro';
+import Textarea from '@/components/ui/Textarea.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit/log';
+import { parseBRLToCents } from '@/lib/format/currency';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+const user = Astro.locals.user;
+
+const { data: items } = await admin
+  .from('donation_items')
+  .select('id, title')
+  .order('title');
+
+let formError: string | null = null;
+const defaults = {
+  title: '',
+  description: '',
+  item_id: '',
+  amount: '',
+  proof_url: '',
+  media_url: '',
+  status: 'planned',
+  is_public: 'on',
+};
+
+if (Astro.request.method === 'POST') {
+  const fd = await Astro.request.formData();
+  const title = String(fd.get('title') ?? '').trim();
+  const description = String(fd.get('description') ?? '').trim();
+  const itemId = String(fd.get('item_id') ?? '') || null;
+  const amount = String(fd.get('amount') ?? '');
+  const proofUrl = String(fd.get('proof_url') ?? '').trim() || null;
+  const mediaUrl = String(fd.get('media_url') ?? '').trim() || null;
+  const status = String(fd.get('status') ?? 'planned');
+  const isPublic = fd.get('is_public') === 'on';
+
+  Object.assign(defaults, {
+    title,
+    description,
+    item_id: itemId ?? '',
+    amount,
+    proof_url: proofUrl ?? '',
+    media_url: mediaUrl ?? '',
+    status,
+    is_public: isPublic ? 'on' : '',
+  });
+
+  if (!title) {
+    formError = 'Título é obrigatório.';
+  } else {
+    const amountCents = amount ? parseBRLToCents(amount) : null;
+    const { data, error } = await admin
+      .from('accountability_entries')
+      .insert({
+        title,
+        description: description || null,
+        item_id: itemId,
+        amount_cents: amountCents,
+        proof_url: proofUrl,
+        media_url: mediaUrl,
+        status: status as 'planned' | 'purchased' | 'delivered' | 'completed',
+        is_public: isPublic,
+        created_by: user?.id ?? null,
+      })
+      .select('id')
+      .maybeSingle();
+    if (error || !data) {
+      formError = error?.message ?? 'Erro ao salvar entrada.';
+    } else {
+      await logAudit({
+        actorId: user?.id ?? null,
+        action: 'accountability_entry.created',
+        entityType: 'accountability_entry',
+        entityId: data.id,
+        after: { title, status, item_id: itemId, amount_cents: amountCents } as never,
+      });
+      return Astro.redirect('/admin/accountability', 302);
+    }
+  }
+}
+---
+
+<AdminLayout title="Nova prestação · Admin" activeNav="transparencia">
+  <nav class="type-caption text-on-surface-variant mb-md flex items-center gap-2">
+    <a href="/admin/accountability" class="hover:text-primary-container">Transparência</a>
+    <Icon name="chevron_right" size={12} />
+    <span class="text-on-surface">Nova entrada</span>
+  </nav>
+
+  <header class="mb-xl">
+    <p class="type-label text-on-surface-variant mb-xs">Prestação de contas</p>
+    <h2 class="font-display type-h2 text-on-surface">Nova entrada</h2>
+  </header>
+
+  <Card class="p-xl">
+    <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-md">
+      {formError && (
+        <div role="alert" class="md:col-span-2 bg-error-container text-on-error-container px-md py-sm rounded-lg type-label">
+          {formError}
+        </div>
+      )}
+
+      <Input label="Título" name="title" required value={defaults.title} maxlength={200} />
+      <Select label="Projeto vinculado" name="item_id">
+        <option value="">— Reserva global —</option>
+        {items?.map((i) => (
+          <option value={i.id} selected={i.id === defaults.item_id}>{i.title}</option>
+        ))}
+      </Select>
+
+      <Input label="Valor (R$)" name="amount" value={defaults.amount} placeholder="0,00" inputmode="decimal" />
+      <Select label="Status" name="status">
+        <option value="planned" selected={defaults.status === 'planned'}>Planejado</option>
+        <option value="purchased" selected={defaults.status === 'purchased'}>Comprado</option>
+        <option value="delivered" selected={defaults.status === 'delivered'}>Entregue</option>
+        <option value="completed" selected={defaults.status === 'completed'}>Concluído</option>
+      </Select>
+
+      <Input label="URL do comprovante" name="proof_url" value={defaults.proof_url} type="url" hint="PDF ou imagem do recibo" />
+      <Input label="URL de mídia (foto/vídeo)" name="media_url" value={defaults.media_url} type="url" hint="Foto da entrega ou vídeo" />
+
+      <div class="md:col-span-2">
+        <Textarea label="Descrição" name="description" rows={5}>
+          {defaults.description}
+        </Textarea>
+      </div>
+
+      <label class="md:col-span-2 inline-flex items-center gap-sm type-label text-on-surface-variant cursor-pointer">
+        <input
+          type="checkbox"
+          name="is_public"
+          checked={defaults.is_public === 'on'}
+          class="size-4 rounded border-outline-variant text-secondary focus:ring-secondary"
+        />
+        Tornar público (visível em /prestacao-de-contas)
+      </label>
+
+      <div class="md:col-span-2 flex justify-end gap-md mt-md">
+        <a href="/admin/accountability" class="border border-outline-variant text-on-surface-variant px-md py-sm rounded-lg type-label hover:bg-surface-container-low">
+          Cancelar
+        </a>
+        <button type="submit" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label font-semibold shadow-cta hover:opacity-90">
+          Salvar entrada
+        </button>
+      </div>
+    </form>
+  </Card>
+</AdminLayout>

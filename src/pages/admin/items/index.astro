@@ -1,0 +1,142 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Icon from '@/components/ui/Icon.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { formatDate } from '@/lib/format/date';
+import { asItemStatus, asUrgency } from '@/lib/supabase/aliases';
+import {
+  itemStatusLabel,
+  itemStatusToTone,
+  urgencyLabel,
+  urgencyToTone,
+} from '@/components/ui/badge-helpers';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+const { data: items } = await admin
+  .from('donation_items')
+  .select(`
+    id, slug, title, urgency, status, target_amount_cents, sort_order, created_at,
+    categories(name)
+  `)
+  .order('sort_order', { ascending: true });
+
+const itemIds = (items ?? []).map((i) => i.id);
+const { data: progress } = await admin
+  .from('item_progress')
+  .select('item_id, confirmed_amount_cents, progress_pct')
+  .in('item_id', itemIds.length ? itemIds : ['00000000-0000-0000-0000-000000000000']);
+const progressMap = new Map(
+  (progress ?? []).map((p) => [p.item_id, p]),
+);
+---
+
+<AdminLayout title="Projetos · Admin" activeNav="projetos">
+  <header class="flex justify-between items-end mb-xl flex-wrap gap-md">
+    <div>
+      <p class="type-label text-on-surface-variant mb-xs">Catálogo</p>
+      <h2 class="font-display type-h2 text-on-surface">Projetos & Itens</h2>
+    </div>
+    <a
+      href="/admin/items/new"
+      class="bg-primary-container text-on-primary type-label px-md py-2 rounded-lg flex items-center gap-2 hover:opacity-90 transition-opacity shadow-card"
+    >
+      <Icon name="add_circle" size={16} />
+      Novo Projeto
+    </a>
+  </header>
+
+  {(!items || items.length === 0) ? (
+    <EmptyState
+      icon="forest"
+      title="Nenhum projeto cadastrado"
+      description="Crie o primeiro projeto para começar a receber doações."
+    >
+      <a href="/admin/items/new" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label hover:opacity-90">
+        Novo projeto
+      </a>
+    </EmptyState>
+  ) : (
+    <Card class="overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-bright border-b border-outline-variant/30">
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Projeto</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Categoria</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Urgência</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Status</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Progresso</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Criado</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/20">
+            {items.map((item) => {
+              const status = asItemStatus(item.status);
+              const urgency = asUrgency(item.urgency);
+              const p = progressMap.get(item.id);
+              const pct = Number(p?.progress_pct ?? 0);
+              const confirmed = Number(p?.confirmed_amount_cents ?? 0);
+              return (
+                <tr class="hover:bg-surface-container-low transition-colors group">
+                  <td class="py-3 px-md">
+                    <p class="font-medium text-on-surface">{item.title}</p>
+                    <p class="type-caption text-on-surface-variant">{item.slug}</p>
+                  </td>
+                  <td class="py-3 px-md type-body text-on-surface-variant">
+                    {item.categories?.name ?? '—'}
+                  </td>
+                  <td class="py-3 px-md">
+                    <Badge tone={urgencyToTone(urgency)}>{urgencyLabel(urgency)}</Badge>
+                  </td>
+                  <td class="py-3 px-md">
+                    <Badge tone={itemStatusToTone(status)}>{itemStatusLabel(status)}</Badge>
+                  </td>
+                  <td class="py-3 px-md w-1/4">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 bg-surface-container h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-primary-container h-full rounded-full" style={`width: ${Math.min(100, pct)}%;`}></div>
+                      </div>
+                      <span class="type-caption text-on-surface-variant font-medium whitespace-nowrap">
+                        {pct}% · {formatBRL(confirmed, { compact: true })}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-md type-caption text-on-surface-variant">
+                    {formatDate(item.created_at)}
+                  </td>
+                  <td class="py-3 px-md text-right">
+                    <div class="flex items-center justify-end gap-1">
+                      <a
+                        href={`/admin/items/${item.id}/edit`}
+                        class="p-1.5 text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low rounded transition-colors"
+                        title="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        href={`/doar/${item.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        class="p-1.5 text-on-surface-variant hover:text-secondary hover:bg-surface-container-low rounded transition-colors"
+                        title="Ver no site"
+                      >
+                        <Icon name="visibility" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )}
+</AdminLayout>

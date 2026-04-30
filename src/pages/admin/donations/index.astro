@@ -1,0 +1,182 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Icon from '@/components/ui/Icon.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { formatDateTime } from '@/lib/format/date';
+import { asIntentStatus, type IntentStatus } from '@/lib/supabase/aliases';
+import { intentStatusLabel, intentStatusToTone } from '@/components/ui/badge-helpers';
+
+export const prerender = false;
+
+const url = new URL(Astro.request.url);
+const filterStatus = url.searchParams.get('status') ?? '';
+
+const admin = getSupabaseAdmin();
+let query = admin
+  .from('donation_intents')
+  .select(`
+    id, amount_cents, donor_name, donor_email, is_anonymous,
+    display_name_publicly, status, pix_txid, created_at, confirmed_at,
+    donation_items(title, slug)
+  `)
+  .order('created_at', { ascending: false })
+  .limit(200);
+
+if (filterStatus && ['pending', 'confirmed', 'expired', 'cancelled', 'failed'].includes(filterStatus)) {
+  query = query.eq('status', filterStatus);
+}
+
+const { data: rows } = await query;
+
+const STATUSES: Array<{ value: IntentStatus | ''; label: string }> = [
+  { value: '', label: 'Todos os status' },
+  { value: 'pending', label: 'Pendente' },
+  { value: 'confirmed', label: 'Confirmada' },
+  { value: 'expired', label: 'Expirada' },
+  { value: 'cancelled', label: 'Cancelada' },
+  { value: 'failed', label: 'Falhou' },
+];
+---
+
+<AdminLayout title="Doações · Admin" activeNav="doacoes">
+  <header class="flex justify-between items-end mb-xl flex-wrap gap-md">
+    <div>
+      <p class="type-label text-on-surface-variant mb-xs">Histórico</p>
+      <h2 class="font-display type-h2 text-on-surface">Doações</h2>
+    </div>
+    <a
+      href={`/api/admin/donations/export${filterStatus ? `?status=${filterStatus}` : ''}`}
+      class="border border-secondary text-secondary px-md py-2 rounded-lg type-label hover:bg-surface-container-low inline-flex items-center gap-2"
+    >
+      <Icon name="download" size={16} />
+      Exportar CSV
+    </a>
+  </header>
+
+  <form method="get" class="bg-surface-container-lowest rounded-xl p-md mb-lg shadow-card border border-outline-variant/30 flex flex-wrap items-center gap-md">
+    <span class="type-label text-on-surface-variant">Filtrar:</span>
+    <div class="relative">
+      <select
+        name="status"
+        class="appearance-none bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl type-label text-on-surface cursor-pointer outline-none"
+      >
+        {STATUSES.map((s) => (
+          <option value={s.value} selected={s.value === filterStatus}>{s.label}</option>
+        ))}
+      </select>
+      <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+        <Icon name="expand_more" size={14} />
+      </span>
+    </div>
+    <button type="submit" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label hover:opacity-90">
+      Aplicar
+    </button>
+  </form>
+
+  {(!rows || rows.length === 0) ? (
+    <EmptyState
+      icon="hand_heart"
+      title="Sem doações encontradas"
+      description="Quando alguém gerar um Pix de doação, ele aparece aqui."
+    />
+  ) : (
+    <Card class="overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-bright border-b border-outline-variant/30">
+              <th class="py-sm px-md type-label text-on-surface-variant">Status</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Projeto</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Doador</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Valor</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">TXID</th>
+              <th class="py-sm px-md type-label text-on-surface-variant">Quando</th>
+              <th class="py-sm px-md type-label text-on-surface-variant text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/20">
+            {rows.map((d) => {
+              const status = asIntentStatus(d.status);
+              const display = d.is_anonymous
+                ? 'Anônimo'
+                : d.donor_name || d.donor_email?.split('@')[0] || '—';
+              return (
+                <tr class="hover:bg-surface-container-low transition-colors">
+                  <td class="py-3 px-md">
+                    <Badge tone={intentStatusToTone(status)}>{intentStatusLabel(status)}</Badge>
+                  </td>
+                  <td class="py-3 px-md type-body text-on-surface">
+                    {d.donation_items?.title ?? '—'}
+                  </td>
+                  <td class="py-3 px-md type-body text-on-surface-variant">
+                    {display}
+                    {d.display_name_publicly && (
+                      <span class="ml-1 type-caption text-secondary">(público)</span>
+                    )}
+                  </td>
+                  <td class="py-3 px-md type-body text-on-surface font-medium">
+                    {formatBRL(d.amount_cents)}
+                  </td>
+                  <td class="py-3 px-md type-caption text-on-surface-variant font-mono">
+                    {d.pix_txid}
+                  </td>
+                  <td class="py-3 px-md type-caption text-on-surface-variant whitespace-nowrap">
+                    {formatDateTime(d.confirmed_at ?? d.created_at)}
+                  </td>
+                  <td class="py-3 px-md text-right">
+                    {status === 'pending' && (
+                      <button
+                        data-manual-confirm
+                        data-intent={d.id}
+                        class="px-2 py-1 type-caption rounded-lg border border-secondary text-secondary hover:bg-secondary/5 transition-colors"
+                      >
+                        Confirmar manualmente
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )}
+</AdminLayout>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-manual-confirm]');
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const intentId = btn.dataset.intent;
+      if (!intentId) return;
+      const notes = prompt('Justificativa da confirmação manual (obrigatório):');
+      if (!notes || notes.trim().length < 1) return;
+      btn.disabled = true;
+      btn.textContent = 'Confirmando…';
+      try {
+        const res = await fetch('/api/admin/manual-confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ intentId, notes: notes.trim() }),
+        });
+        if (res.ok) {
+          location.reload();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          alert(`Erro: ${data.error ?? 'tente novamente'}`);
+          btn.disabled = false;
+          btn.textContent = 'Confirmar manualmente';
+        }
+      } catch {
+        alert('Falha de conexão.');
+        btn.disabled = false;
+        btn.textContent = 'Confirmar manualmente';
+      }
+    });
+  });
+</script>

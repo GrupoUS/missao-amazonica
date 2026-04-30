@@ -1,0 +1,223 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { formatRelative } from '@/lib/format/date';
+import { asUrgency, asItemStatus } from '@/lib/supabase/aliases';
+import { itemStatusToTone, itemStatusLabel } from '@/components/ui/badge-helpers';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+
+const [
+  { data: stats },
+  { data: pendingCountRow },
+  { data: itemsActive },
+  { data: items },
+  { data: progressRows },
+  { data: auditLogs },
+] = await Promise.all([
+  admin.from('landing_stats').select('*').maybeSingle(),
+  admin.from('donation_intents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+  admin.from('donation_items').select('id', { count: 'exact', head: true }).eq('status', 'published'),
+  admin.from('donation_items').select('id, slug, title, urgency, status, target_amount_cents, sort_order').order('sort_order').limit(10),
+  admin.from('item_progress').select('item_id, confirmed_amount_cents, target_amount_cents, progress_pct'),
+  admin.from('audit_logs').select('id, action, entity_type, entity_id, actor_id, created_at, metadata').order('created_at', { ascending: false }).limit(10),
+]);
+
+const totalRaised = Number(stats?.total_raised_cents ?? 0);
+const projectsActive = Number(stats?.projects_active ?? 0);
+const reserveCents = Number(stats?.reserve_cents ?? 0);
+const itemsCompleted = Number(stats?.items_completed ?? 0);
+
+const progressMap = new Map(
+  (progressRows ?? []).map((p) => [p.item_id, Number(p.progress_pct ?? 0)]),
+);
+---
+
+<AdminLayout title="Painel · Missão Amazônica" activeNav="painel">
+  <header class="flex justify-between items-end mb-xl flex-wrap gap-md">
+    <div>
+      <p class="type-label text-on-surface-variant mb-xs">Visão Geral</p>
+      <h2 class="font-display type-h2 text-on-surface">Painel de Controle</h2>
+    </div>
+    <a
+      href="/admin/items/new"
+      class="bg-primary-container text-on-primary type-label px-md py-2 rounded-lg flex items-center gap-2 hover:opacity-90 transition-opacity shadow-card"
+    >
+      <Icon name="add_circle" size={16} />
+      Novo Item
+    </a>
+  </header>
+
+  <!-- Metrics -->
+  <section class="grid grid-cols-1 md:grid-cols-4 gap-md mb-xl">
+    <Card variant="metric" accent="secondary" class="p-md">
+      <div class="flex justify-between items-start mb-sm">
+        <p class="type-label text-on-surface-variant">Doações Confirmadas</p>
+        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+          <Icon name="payments" size={16} />
+        </span>
+      </div>
+      <div class="font-display type-h2 text-on-surface">{formatBRL(totalRaised, { compact: true })}</div>
+      <p class="type-caption text-secondary mt-xs flex items-center gap-1">
+        <Icon name="trending_up" size={12} /> {projectsActive} projetos ativos
+      </p>
+    </Card>
+    <Card variant="metric" accent="secondary" class="p-md">
+      <div class="flex justify-between items-start mb-sm">
+        <p class="type-label text-on-surface-variant">Itens Ativos</p>
+        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+          <Icon name="inventory_2" size={16} />
+        </span>
+      </div>
+      <div class="font-display type-h2 text-on-surface">{itemsActive ? '—' : projectsActive}</div>
+      <p class="type-caption text-on-surface-variant mt-xs flex items-center gap-1">
+        <Icon name="pending_actions" size={12} /> {pendingCountRow?.length ?? 0} doações pendentes
+      </p>
+    </Card>
+    <Card variant="metric" accent="secondary" class="p-md">
+      <div class="flex justify-between items-start mb-sm">
+        <p class="type-label text-on-surface-variant">Concluídos</p>
+        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+          <Icon name="check_circle" size={16} />
+        </span>
+      </div>
+      <div class="font-display type-h2 text-on-surface">{itemsCompleted}</div>
+      <p class="type-caption text-on-surface-variant mt-xs">Itens entregues</p>
+    </Card>
+    <Card variant="metric" accent="secondary" class="p-md">
+      <div class="flex justify-between items-start mb-sm">
+        <p class="type-label text-on-surface-variant">Reserva Global</p>
+        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+          <Icon name="savings" size={16} />
+        </span>
+      </div>
+      <div class="font-display type-h2 text-on-surface">{formatBRL(reserveCents, { compact: true })}</div>
+      <p class="type-caption text-on-surface-variant mt-xs">Excedente acumulado</p>
+    </Card>
+  </section>
+
+  <!-- Items table + audit logs -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+    <Card class="lg:col-span-2 overflow-hidden">
+      <header class="px-md py-sm border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
+        <h3 class="font-display type-h3 text-on-surface">Gerenciar Itens</h3>
+        <a
+          href="/admin/items"
+          class="type-label text-secondary hover:text-primary-container inline-flex items-center gap-1"
+        >
+          Ver todos
+          <Icon name="arrow_forward" size={12} />
+        </a>
+      </header>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-bright border-b border-outline-variant/30">
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Projeto</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Status</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium">Progresso</th>
+              <th class="py-sm px-md type-label text-on-surface-variant font-medium text-right">Ações</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/20">
+            {(items ?? []).map((item) => {
+              const status = asItemStatus(item.status);
+              const urgency = asUrgency(item.urgency);
+              const pct = progressMap.get(item.id) ?? 0;
+              return (
+                <tr class="hover:bg-surface-container-low transition-colors group">
+                  <td class="py-3 px-md">
+                    <p class="font-medium text-on-surface">{item.title}</p>
+                    <p class="type-caption text-on-surface-variant">Meta {formatBRL(item.target_amount_cents)}</p>
+                  </td>
+                  <td class="py-3 px-md">
+                    <Badge tone={itemStatusToTone(status)}>
+                      {itemStatusLabel(status)}
+                    </Badge>
+                    {urgency === 'urgent' && (
+                      <Badge tone="urgent" class="ml-1" icon="priority_high">Urgente</Badge>
+                    )}
+                  </td>
+                  <td class="py-3 px-md w-1/3">
+                    <div class="flex items-center gap-3">
+                      <div class="flex-1 bg-surface-container h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-primary-container h-full rounded-full" style={`width: ${Math.min(100, pct)}%;`}></div>
+                      </div>
+                      <span class="type-caption text-on-surface-variant font-medium">{pct}%</span>
+                    </div>
+                  </td>
+                  <td class="py-3 px-md text-right">
+                    <div class="flex items-center justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <a
+                        href={`/admin/items/${item.id}/edit`}
+                        class="p-1 text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low rounded transition-colors"
+                        title="Editar"
+                      >
+                        <Icon name="edit" size={16} />
+                      </a>
+                      <a
+                        href={`/doar/${item.slug}`}
+                        target="_blank"
+                        rel="noopener"
+                        class="p-1 text-on-surface-variant hover:text-secondary hover:bg-surface-container-low rounded transition-colors"
+                        title="Ver no site"
+                      >
+                        <Icon name="visibility" size={16} />
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {(items ?? []).length === 0 && (
+              <tr>
+                <td colspan="4" class="py-xl text-center type-body text-on-surface-variant">
+                  Nenhum projeto cadastrado ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+
+    <aside class="flex flex-col gap-md">
+      <Card class="overflow-hidden flex-1">
+        <header class="px-md py-sm border-b border-outline-variant/30 bg-surface-bright flex items-center gap-2">
+          <Icon name="history" size={18} class="text-secondary" />
+          <h3 class="font-display type-h3 text-on-surface">Logs Recentes</h3>
+        </header>
+        <ul class="p-md flex-1 max-h-[480px] overflow-y-auto flex flex-col gap-md">
+          {(auditLogs ?? []).map((log) => (
+            <li class="flex gap-3">
+              <div class="size-6 rounded-full bg-surface-container-lowest border-2 border-secondary flex items-center justify-center shrink-0 mt-0.5">
+                <Icon name="receipt" size={10} class="text-secondary" />
+              </div>
+              <div class="min-w-0">
+                <p class="type-body text-on-surface leading-tight">
+                  <code class="text-secondary type-caption">{log.action}</code>
+                  {' em '}
+                  <span class="font-medium">{log.entity_type}</span>
+                </p>
+                <p class="type-caption text-on-surface-variant mt-1">
+                  {formatRelative(log.created_at)}
+                </p>
+              </div>
+            </li>
+          ))}
+          {(auditLogs ?? []).length === 0 && (
+            <li class="type-caption text-on-surface-variant py-md text-center">
+              Sem atividade registrada.
+            </li>
+          )}
+        </ul>
+      </Card>
+    </aside>
+  </section>
+</AdminLayout>

@@ -1,0 +1,118 @@
+---
+import '@/styles/global.css';
+import Icon from '@/components/ui/Icon.astro';
+
+export const prerender = false;
+
+let formError: string | null = null;
+let formEmail = '';
+
+const url = new URL(Astro.request.url);
+if (url.searchParams.get('error') === 'not_admin') {
+  formError = 'Esta conta não tem permissão de administrador.';
+}
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  formEmail = String(formData.get('email') ?? '').trim();
+  const password = String(formData.get('password') ?? '');
+
+  if (!formEmail || !password) {
+    formError = 'Informe e-mail e senha.';
+  } else {
+    const { data, error } = await Astro.locals.supabase.auth.signInWithPassword({
+      email: formEmail,
+      password,
+    });
+    if (error || !data?.user) {
+      formError = 'Credenciais inválidas.';
+    } else {
+      // Verify admin
+      // @ts-expect-error — rpc generics
+      const { data: isAdmin } = await Astro.locals.supabase.rpc('is_admin', {
+        uid: data.user.id,
+      });
+      if (!isAdmin) {
+        await Astro.locals.supabase.auth.signOut();
+        formError = 'Esta conta não tem permissão de administrador.';
+      } else {
+        return Astro.redirect('/admin', 302);
+      }
+    }
+  }
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Entrar · Missão Amazônica</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&display=swap"
+    />
+  </head>
+  <body class="bg-background text-on-background antialiased min-h-screen flex flex-col items-center justify-center p-md">
+    <div class="w-full max-w-md flex flex-col gap-lg">
+      <a href="/" class="flex items-center gap-2 self-center text-primary-container hover:opacity-80 transition-opacity">
+        <span class="size-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center">
+          <Icon name="hand_heart" size={20} />
+        </span>
+        <span class="font-display text-xl font-bold">Missão Amazônica</span>
+      </a>
+
+      <div class="bg-surface-container-lowest rounded-3xl p-xl shadow-modal border border-outline-variant/30">
+        <h1 class="font-display type-h2 text-on-surface mb-sm text-center">Acesso administrativo</h1>
+        <p class="type-body text-on-surface-variant mb-lg text-center">
+          Entre com suas credenciais de administrador da missão.
+        </p>
+
+        <form method="POST" class="flex flex-col gap-md">
+          <div class="flex flex-col gap-1">
+            <label for="email" class="type-label text-on-surface-variant">E-mail</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              value={formEmail}
+              class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-3 px-4 type-body text-on-surface outline-none transition-colors"
+            />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label for="password" class="type-label text-on-surface-variant">Senha</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              required
+              autocomplete="current-password"
+              class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-3 px-4 type-body text-on-surface outline-none transition-colors"
+            />
+          </div>
+          {formError && (
+            <div role="alert" class="bg-error-container text-on-error-container px-md py-sm rounded-lg type-label">
+              {formError}
+            </div>
+          )}
+          <button
+            type="submit"
+            class="w-full bg-primary-container text-on-primary py-3 rounded-lg type-label font-semibold shadow-cta hover:opacity-90 transition-opacity"
+          >
+            Entrar
+          </button>
+        </form>
+      </div>
+
+      <a href="/" class="self-center type-caption text-on-surface-variant hover:text-primary-container transition-colors">
+        Voltar ao site público
+      </a>
+    </div>
+  </body>
+</html>

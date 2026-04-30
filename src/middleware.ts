@@ -22,9 +22,8 @@ const supabaseSessionMiddleware: MiddlewareHandler = async (context, next) => {
 
   if (user) {
     try {
-      const { data: isAdminData } = await supabase.rpc('is_admin', {
-        uid: user.id,
-      });
+      // @ts-expect-error — @supabase/ssr generics on rpc args don't propagate cleanly across versions; the function is real and validated by RLS.
+      const { data: isAdminData } = await supabase.rpc('is_admin', { uid: user.id });
       context.locals.isAdmin = Boolean(isAdminData);
     } catch {
       context.locals.isAdmin = false;

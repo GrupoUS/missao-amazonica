@@ -1,10 +1,14 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/lib/supabase/types';
 import type { BankStatus } from '@/lib/supabase/aliases';
 import type { PixProvider } from './providers/types';
 import { bankPixProvider } from './providers/bank-pix-provider';
 import { manualProvider } from './providers/manual-provider';
 import { logWarn } from '@/lib/monitoring/logger';
+
+// Accept any Supabase client (server or admin/service-role). The Supabase
+// generics vary across @supabase/ssr and supabase-js versions; we only need
+// the basic .from('settings').select(...).in(...) capability.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnySupabase = any;
 
 interface PixSettings {
   pixKey: string;
@@ -28,9 +32,7 @@ function asString(v: unknown): string {
   return String(v);
 }
 
-export async function getPixSettings(
-  supabase: SupabaseClient<Database>,
-): Promise<PixSettings> {
+export async function getPixSettings(supabase: AnySupabase): Promise<PixSettings> {
   const { data, error } = await supabase
     .from('settings')
     .select('key, value')
@@ -41,7 +43,9 @@ export async function getPixSettings(
     return FALLBACK_SETTINGS;
   }
 
-  const map = Object.fromEntries(data.map((row) => [row.key, row.value]));
+  const map = Object.fromEntries(
+    (data as Array<{ key: string; value: unknown }>).map((row) => [row.key, row.value]),
+  );
   const bankStatusRaw = asString(map.bank_status);
   const bankStatus: BankStatus =
     bankStatusRaw === 'manual_verification' ||
@@ -67,7 +71,7 @@ export function pickProvider(bankStatus: BankStatus): PixProvider {
 }
 
 export async function getProvider(
-  supabase: SupabaseClient<Database>,
+  supabase: AnySupabase,
 ): Promise<{ provider: PixProvider; settings: PixSettings }> {
   const settings = await getPixSettings(supabase);
   return { provider: pickProvider(settings.bankStatus), settings };

@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { getProvider } from '@/lib/payments/registry';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { logError, logInfo, logWarn } from '@/lib/monitoring/logger';
+import { sendDonationConfirmed } from '@/lib/email/resend';
 
 export const prerender = false;
 
@@ -138,6 +139,25 @@ export const POST: APIRoute = async ({ request, locals }) => {
     item_id: intent.item_id,
     amount_cents: event.amountCents,
   });
+
+  // Fire-and-forget donor email
+  try {
+    const { data: full } = await admin
+      .from('donation_intents')
+      .select('donor_email, donor_name, donation_items(title)')
+      .eq('id', intent.id)
+      .maybeSingle();
+    if (full?.donor_email) {
+      void sendDonationConfirmed({
+        to: full.donor_email,
+        donorName: full.donor_name,
+        itemTitle: full.donation_items?.title ?? 'Missão',
+        amountCents: event.amountCents,
+      });
+    }
+  } catch {
+    // best effort
+  }
 
   return Response.json({ ok: true, confirmed: true, intentId: intent.id });
 };

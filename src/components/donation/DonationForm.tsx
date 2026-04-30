@@ -1,4 +1,4 @@
-import { useState, useTransition, type FormEvent } from 'react';
+import { useState, useTransition } from 'react';
 import { CreateDonationIntentSchema } from '@/lib/validators/donation';
 import { parseBRLToCents, formatBRL } from '@/lib/format/currency';
 import { PixPanel } from './PixPanel';
@@ -39,7 +39,7 @@ export function DonationForm({
     setAmountInput(formatBRL(cents).replace('R$', '').trim());
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
     setError(null);
 

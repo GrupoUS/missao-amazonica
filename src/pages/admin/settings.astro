@@ -1,0 +1,142 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Input from '@/components/ui/Input.astro';
+import Select from '@/components/ui/Select.astro';
+import Textarea from '@/components/ui/Textarea.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit/log';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+const user = Astro.locals.user;
+
+interface SettingMap {
+  [key: string]: { value: unknown; is_public: boolean };
+}
+
+async function loadSettings(): Promise<SettingMap> {
+  const { data } = await admin.from('settings').select('key, value, is_public');
+  const map: SettingMap = {};
+  for (const row of data ?? []) {
+    map[row.key] = { value: row.value, is_public: row.is_public };
+  }
+  return map;
+}
+
+let settings = await loadSettings();
+let formError: string | null = null;
+let formOk: string | null = null;
+
+function asString(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (v == null) return '';
+  return String(v);
+}
+
+if (Astro.request.method === 'POST') {
+  const fd = await Astro.request.formData();
+  const updates: Array<{ key: string; value: import('@/lib/supabase/types').Json; is_public: boolean }> = [
+    { key: 'mission_text', value: String(fd.get('mission_text') ?? ''), is_public: true },
+    { key: 'mission_period', value: String(fd.get('mission_period') ?? ''), is_public: true },
+    { key: 'contact_email', value: String(fd.get('contact_email') ?? ''), is_public: true },
+    { key: 'cnpj', value: String(fd.get('cnpj') ?? ''), is_public: true },
+    { key: 'pix_key', value: String(fd.get('pix_key') ?? ''), is_public: false },
+    { key: 'pix_merchant_name', value: String(fd.get('pix_merchant_name') ?? ''), is_public: false },
+    { key: 'pix_merchant_city', value: String(fd.get('pix_merchant_city') ?? ''), is_public: false },
+    { key: 'bank_name', value: String(fd.get('bank_name') ?? ''), is_public: false },
+    { key: 'bank_status', value: String(fd.get('bank_status') ?? 'not_configured'), is_public: false },
+  ];
+
+  const before = { ...settings };
+  const { error } = await admin.from('settings').upsert(updates, { onConflict: 'key' });
+
+  if (error) {
+    formError = error.message;
+  } else {
+    formOk = 'Configurações salvas.';
+    settings = await loadSettings();
+    await logAudit({
+      actorId: user?.id ?? null,
+      action: 'settings.updated',
+      entityType: 'settings',
+      before: before as never,
+      after: settings as never,
+    });
+  }
+}
+
+const get = (k: string) => asString(settings[k]?.value);
+---
+
+<AdminLayout title="Configurações · Admin" activeNav="configuracoes">
+  <header class="mb-xl">
+    <p class="type-label text-on-surface-variant mb-xs">Sistema</p>
+    <h2 class="font-display type-h2 text-on-surface">Configurações</h2>
+  </header>
+
+  <form method="POST" class="flex flex-col gap-lg">
+    {formError && (
+      <div role="alert" class="bg-error-container text-on-error-container px-md py-sm rounded-lg type-label">
+        {formError}
+      </div>
+    )}
+    {formOk && (
+      <div role="status" class="bg-secondary-container text-on-secondary-container px-md py-sm rounded-lg type-label">
+        {formOk}
+      </div>
+    )}
+
+    <!-- Mission content -->
+    <Card class="p-xl">
+      <h3 class="font-display type-h3 text-on-surface mb-md flex items-center gap-2">
+        <Icon name="forest" size={20} class="text-primary-container" />
+        Conteúdo da missão
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+        <div class="md:col-span-2">
+          <Textarea label="Texto da missão (público)" name="mission_text" rows={4}>
+            {get('mission_text')}
+          </Textarea>
+        </div>
+        <Input label="Período da missão" name="mission_period" value={get('mission_period')} hint="Ex.: Toda primeira semana de abril" />
+        <Input label="CNPJ" name="cnpj" value={get('cnpj')} />
+        <Input label="E-mail de contato" name="contact_email" type="email" value={get('contact_email')} />
+      </div>
+    </Card>
+
+    <!-- Pix -->
+    <Card class="p-xl">
+      <h3 class="font-display type-h3 text-on-surface mb-md flex items-center gap-2">
+        <Icon name="payments" size={20} class="text-primary-container" />
+        Pagamento Pix
+      </h3>
+      <p class="type-caption text-on-surface-variant mb-md">
+        Estes valores não são exibidos publicamente. Use o status do banco para
+        habilitar o webhook quando integrar a API.
+      </p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+        <Input label="Chave Pix" name="pix_key" value={get('pix_key')} required hint="CNPJ, e-mail, telefone ou chave aleatória" />
+        <Input label="Banco" name="bank_name" value={get('bank_name')} />
+        <Input label="Nome do beneficiário (Pix)" name="pix_merchant_name" value={get('pix_merchant_name')} maxlength={25} hint="Máx. 25 caracteres ASCII" />
+        <Input label="Cidade do beneficiário" name="pix_merchant_city" value={get('pix_merchant_city')} maxlength={15} hint="Máx. 15 caracteres ASCII" />
+        <div class="md:col-span-2">
+          <Select label="Status da integração bancária" name="bank_status">
+            <option value="not_configured" selected={get('bank_status') === 'not_configured'}>Não configurado</option>
+            <option value="manual_verification" selected={get('bank_status') === 'manual_verification'}>Verificação manual</option>
+            <option value="api_configured" selected={get('bank_status') === 'api_configured'}>API configurada</option>
+            <option value="webhook_configured" selected={get('bank_status') === 'webhook_configured'}>Webhook ativo</option>
+          </Select>
+        </div>
+      </div>
+    </Card>
+
+    <div class="flex justify-end">
+      <button type="submit" class="bg-primary-container text-on-primary px-lg py-sm rounded-lg type-label font-semibold shadow-cta hover:opacity-90">
+        Salvar configurações
+      </button>
+    </div>
+  </form>
+</AdminLayout>

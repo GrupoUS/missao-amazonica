@@ -6,6 +6,7 @@ import { buildItemTxid } from '@/lib/payments/pix';
 import { logError, logInfo } from '@/lib/monitoring/logger';
 import { hashIp } from '@/lib/audit/log';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { sendDonationIntentCreated } from '@/lib/email/resend';
 
 export const prerender = false;
 
@@ -143,6 +144,16 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
     amount_cents: input.amountCents,
     provider: provider.id,
   });
+
+  if (input.donorEmail) {
+    void sendDonationIntentCreated({
+      to: input.donorEmail.trim(),
+      donorName: isAnonymous ? null : input.donorName?.trim() ?? null,
+      itemTitle: item.title,
+      amountCents: input.amountCents,
+      pixPayload: intentResult.payload,
+    });
+  }
 
   return Response.json({
     intentId: insertedRow.id,

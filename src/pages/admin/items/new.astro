@@ -1,0 +1,188 @@
+---
+import AdminLayout from '@/layouts/AdminLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Icon from '@/components/ui/Icon.astro';
+import Input from '@/components/ui/Input.astro';
+import Select from '@/components/ui/Select.astro';
+import Textarea from '@/components/ui/Textarea.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { logAudit } from '@/lib/audit/log';
+import { slugify } from '@/lib/utils';
+import { parseBRLToCents } from '@/lib/format/currency';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+const user = Astro.locals.user;
+
+const { data: missions } = await admin
+  .from('missions')
+  .select('id, title, slug')
+  .eq('is_active', true)
+  .order('title');
+const { data: categories } = await admin
+  .from('categories')
+  .select('id, name, slug')
+  .order('sort_order');
+
+let formError: string | null = null;
+const defaults = {
+  title: '',
+  slug: '',
+  description: '',
+  category_id: categories?.[0]?.id ?? '',
+  mission_id: missions?.[0]?.id ?? '',
+  urgency: 'medium',
+  image_url: '',
+  image_type: 'illustrative',
+  target_amount: '',
+  status: 'draft',
+};
+
+if (Astro.request.method === 'POST') {
+  const formData = await Astro.request.formData();
+  const title = String(formData.get('title') ?? '').trim();
+  const slug = String(formData.get('slug') ?? '').trim() || slugify(title);
+  const description = String(formData.get('description') ?? '').trim();
+  const missionId = String(formData.get('mission_id') ?? '');
+  const categoryId = String(formData.get('category_id') ?? '') || null;
+  const urgency = String(formData.get('urgency') ?? 'medium');
+  const imageUrl = String(formData.get('image_url') ?? '').trim() || null;
+  const imageType = String(formData.get('image_type') ?? 'illustrative');
+  const targetAmount = String(formData.get('target_amount') ?? '');
+  const status = String(formData.get('status') ?? 'draft');
+
+  defaults.title = title;
+  defaults.slug = slug;
+  defaults.description = description;
+  defaults.mission_id = missionId;
+  defaults.category_id = categoryId ?? '';
+  defaults.urgency = urgency;
+  defaults.image_url = imageUrl ?? '';
+  defaults.image_type = imageType;
+  defaults.target_amount = targetAmount;
+  defaults.status = status;
+
+  if (!title || !missionId) {
+    formError = 'Título e missão são obrigatórios.';
+  } else {
+    const targetCents = parseBRLToCents(targetAmount) ?? 0;
+    if (targetCents < 0) {
+      formError = 'Valor da meta inválido.';
+    } else {
+      const { data: inserted, error } = await admin
+        .from('donation_items')
+        .insert({
+          mission_id: missionId,
+          category_id: categoryId,
+          title,
+          slug,
+          description: description || null,
+          image_url: imageUrl,
+          image_type: imageType as 'real' | 'illustrative',
+          urgency: urgency as 'low' | 'medium' | 'high' | 'urgent',
+          target_amount_cents: targetCents,
+          status: status as 'draft' | 'published' | 'archived' | 'completed',
+          approved_by: status === 'published' ? user?.id ?? null : null,
+          approved_at: status === 'published' ? new Date().toISOString() : null,
+        })
+        .select('id')
+        .maybeSingle();
+
+      if (error || !inserted) {
+        formError = error?.message ?? 'Erro ao salvar projeto.';
+      } else {
+        await logAudit({
+          actorId: user?.id ?? null,
+          action: 'donation_item.created',
+          entityType: 'donation_item',
+          entityId: inserted.id,
+          after: { title, status, target_amount_cents: targetCents } as never,
+        });
+        return Astro.redirect('/admin/items', 302);
+      }
+    }
+  }
+}
+---
+
+<AdminLayout title="Novo Projeto · Admin" activeNav="projetos">
+  <nav class="type-caption text-on-surface-variant mb-md flex items-center gap-2">
+    <a href="/admin/items" class="hover:text-primary-container">Projetos</a>
+    <Icon name="chevron_right" size={12} />
+    <span class="text-on-surface">Novo</span>
+  </nav>
+
+  <header class="mb-xl">
+    <p class="type-label text-on-surface-variant mb-xs">Catálogo</p>
+    <h2 class="font-display type-h2 text-on-surface">Novo Projeto</h2>
+  </header>
+
+  <Card class="p-xl">
+    <form method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-md">
+      {formError && (
+        <div role="alert" class="md:col-span-2 bg-error-container text-on-error-container px-md py-sm rounded-lg type-label">
+          {formError}
+        </div>
+      )}
+
+      <Input label="Título do projeto" name="title" required value={defaults.title} maxlength={200} />
+      <Input label="Slug (URL)" name="slug" value={defaults.slug} hint="Gerado automaticamente se vazio" maxlength={120} />
+
+      <Select label="Missão" name="mission_id" required>
+        {missions?.map((m) => (
+          <option value={m.id} selected={m.id === defaults.mission_id}>{m.title}</option>
+        ))}
+      </Select>
+      <Select label="Categoria" name="category_id">
+        <option value="">— Sem categoria —</option>
+        {categories?.map((c) => (
+          <option value={c.id} selected={c.id === defaults.category_id}>{c.name}</option>
+        ))}
+      </Select>
+
+      <Select label="Urgência" name="urgency">
+        <option value="low" selected={defaults.urgency === 'low'}>Baixa</option>
+        <option value="medium" selected={defaults.urgency === 'medium'}>Média</option>
+        <option value="high" selected={defaults.urgency === 'high'}>Alta</option>
+        <option value="urgent" selected={defaults.urgency === 'urgent'}>Urgente</option>
+      </Select>
+      <Input
+        label="Meta (R$)"
+        name="target_amount"
+        value={defaults.target_amount}
+        placeholder="5.000,00"
+        inputmode="decimal"
+        hint="Valor é convertido para centavos"
+      />
+
+      <Input label="URL da imagem" name="image_url" value={defaults.image_url} hint="Use Supabase Storage ou link externo" type="url" />
+      <Select label="Tipo da imagem" name="image_type">
+        <option value="illustrative" selected={defaults.image_type === 'illustrative'}>Ilustrativa</option>
+        <option value="real" selected={defaults.image_type === 'real'}>Real</option>
+      </Select>
+
+      <div class="md:col-span-2">
+        <Textarea label="Descrição" name="description" rows={6}>
+          {defaults.description}
+        </Textarea>
+      </div>
+
+      <Select label="Status" name="status">
+        <option value="draft" selected={defaults.status === 'draft'}>Rascunho</option>
+        <option value="published" selected={defaults.status === 'published'}>Publicado</option>
+        <option value="archived" selected={defaults.status === 'archived'}>Arquivado</option>
+        <option value="completed" selected={defaults.status === 'completed'}>Concluído</option>
+      </Select>
+
+      <div class="md:col-span-2 flex justify-end gap-md mt-md">
+        <a href="/admin/items" class="border border-outline-variant text-on-surface-variant px-md py-sm rounded-lg type-label hover:bg-surface-container-low">
+          Cancelar
+        </a>
+        <button type="submit" class="bg-primary-container text-on-primary px-md py-sm rounded-lg type-label font-semibold shadow-cta hover:opacity-90">
+          Salvar projeto
+        </button>
+      </div>
+    </form>
+  </Card>
+</AdminLayout>
