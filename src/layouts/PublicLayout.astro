@@ -3,6 +3,7 @@ import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
 import ThemeToggle from '@/components/ui/ThemeToggle.tsx';
 import { Toaster } from '@/components/ui/sonner.tsx';
+import SpeedInsights from '@vercel/speed-insights/astro';
 
 interface Props {
   title?: string;
@@ -215,6 +216,8 @@ const year = new Date().getFullYear();
     </footer>
 
     <Toaster client:idle position="bottom-right" richColors closeButton />
+
+    <SpeedInsights />
 
     {/* Reveal-on-scroll: add `is-visible` to `.reveal` elements once they intersect. */}
     <script is:inline>

@@ -5,6 +5,7 @@
 // during password recovery. Mirrors the standalone shape of /admin/login.astro.
 import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
+import SpeedInsights from '@vercel/speed-insights/astro';
 
 export const prerender = false;
 
@@ -174,5 +175,7 @@ if (Astro.request.method === 'POST' && sessionReady) {
         Voltar ao login
       </a>
     </div>
+
+    <SpeedInsights />
   </body>
 </html>
