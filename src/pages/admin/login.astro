@@ -2,6 +2,7 @@
 import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
+import Analytics from '@vercel/analytics/astro';
 
 export const prerender = false;
 
@@ -298,5 +299,6 @@ const resetSent = url.searchParams.get('reset') === 'sent';
     </script>
 
     <SpeedInsights />
+    <Analytics />
   </body>
 </html>

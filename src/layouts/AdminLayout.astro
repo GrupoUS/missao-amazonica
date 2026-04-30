@@ -4,6 +4,7 @@ import Icon from '@/components/ui/Icon.astro';
 import ThemeToggle from '@/components/ui/ThemeToggle.tsx';
 import { Toaster } from '@/components/ui/sonner.tsx';
 import SpeedInsights from '@vercel/speed-insights/astro';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   title?: string;
@@ -150,6 +151,7 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
     <Toaster client:idle position="bottom-right" richColors closeButton />
 
     <SpeedInsights />
+    <Analytics />
 
     <script is:inline>
       (function () {

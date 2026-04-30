@@ -6,6 +6,7 @@
 import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
+import Analytics from '@vercel/analytics/astro';
 
 export const prerender = false;
 
@@ -177,5 +178,6 @@ if (Astro.request.method === 'POST' && sessionReady) {
     </div>
 
     <SpeedInsights />
+    <Analytics />
   </body>
 </html>
