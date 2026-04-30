@@ -1,0 +1,38 @@
+# Dependencies (Vercel installs these from package.json)
+node_modules/
+bun.lockb
+.pnpm-store/
+
+# Build output (Vercel rebuilds)
+dist/
+build/
+.astro/
+.output/
+
+# Local env (use Vercel dashboard env)
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# Local-only project assets
+docs/stitch-design/
+.claude/
+.cursor/
+supabase/.temp/
+supabase/.branches/
+scripts/
+
+# TypeScript
+*.tsbuildinfo
