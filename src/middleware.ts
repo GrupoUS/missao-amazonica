@@ -41,8 +41,13 @@ const adminGuardMiddleware: MiddlewareHandler = async (context, next) => {
   if (!pathname.startsWith('/admin')) {
     return next();
   }
-  // Public admin entry points
-  if (pathname === '/admin/login' || pathname === '/admin/logout') {
+  // Public admin entry points (auth flow surfaces — recovery uses code-exchange,
+  // not pre-existing session)
+  if (
+    pathname === '/admin/login' ||
+    pathname === '/admin/logout' ||
+    pathname === '/admin/redefinir-senha'
+  ) {
     return next();
   }
 

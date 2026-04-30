@@ -1,0 +1,178 @@
+---
+// Standalone HTML doc (not AdminLayout) by design: this is an auth-flow surface
+// reached pre-session via email recovery link. AdminLayout sidebar references
+// post-login destinations and assumes an authenticated session — inappropriate
+// during password recovery. Mirrors the standalone shape of /admin/login.astro.
+import '@/styles/global.css';
+import Icon from '@/components/ui/Icon.astro';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const url = new URL(Astro.request.url);
+const code = url.searchParams.get('code');
+
+let formError: string | null = null;
+let success = false;
+let sessionReady = false;
+
+// Exchange code on GET only, then redirect to drop ?code= from URL so the POST
+// (which targets the same path) doesn't re-exchange a single-use code.
+if (code && Astro.request.method === 'GET') {
+  const { error } = await Astro.locals.supabase.auth.exchangeCodeForSession(code);
+  if (!error) {
+    return Astro.redirect('/admin/redefinir-senha', 303);
+  }
+  formError = 'Link inválido ou expirado. Solicite um novo link.';
+} else {
+  // After redirect (or POST), session is in cookies — verify it exists.
+  const { data } = await Astro.locals.supabase.auth.getUser();
+  sessionReady = !!data?.user;
+  if (!sessionReady && !formError) {
+    formError = 'Sessão de recuperação não encontrada. Solicite um novo link.';
+  }
+}
+
+if (Astro.request.method === 'POST' && sessionReady) {
+  const formData = await Astro.request.formData();
+  const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('password_confirm') ?? '');
+
+  if (password.length < 8) {
+    formError = 'A senha precisa ter pelo menos 8 caracteres.';
+  } else if (password !== confirm) {
+    formError = 'As senhas não coincidem.';
+  } else {
+    const { error } = await Astro.locals.supabase.auth.updateUser({ password });
+    if (error) {
+      formError = 'Não foi possível atualizar a senha. Tente novamente.';
+    } else {
+      success = true;
+    }
+  }
+}
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redefinir senha · Missão Amazônica</title>
+    <meta name="robots" content="noindex,nofollow" />
+
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('salda-theme') || 'system';
+          var resolved = stored === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : stored;
+          if (resolved === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&display=swap"
+    />
+  </head>
+  <body class="bg-background text-on-background antialiased min-h-screen flex items-center justify-center p-md">
+    <div class="w-full max-w-md flex flex-col gap-lg" style="width: 100%; max-width: 28rem;">
+      <a href="/" class="flex items-center gap-2 self-center text-primary-container hover:opacity-80 transition-opacity">
+        <img
+          src="/images/brand/logo.jpg"
+          alt=""
+          aria-hidden="true"
+          width={40}
+          height={40}
+          class="size-10 rounded-full bg-surface-container-lowest object-cover border border-outline-variant/30"
+        />
+        <span class="font-display text-xl font-bold">Missão Amazônica</span>
+      </a>
+
+      <div class="bg-surface-container-lowest rounded-3xl p-xl shadow-modal border border-outline-variant/30">
+        <h1 class="font-display type-h2 text-on-surface mb-sm text-center">Redefinir senha</h1>
+
+        {success ? (
+          <div class="flex flex-col items-center text-center gap-md">
+            <span class="size-16 rounded-full bg-secondary-container/40 text-secondary flex items-center justify-center">
+              <Icon name="check_circle" size={28} />
+            </span>
+            <p class="type-body text-on-surface-variant">Senha atualizada com sucesso.</p>
+            <a
+              href="/admin"
+              class="w-full bg-primary-container text-on-primary py-3 rounded-lg type-label font-semibold shadow-cta hover:opacity-90 transition-opacity text-center"
+            >
+              Acessar painel
+            </a>
+          </div>
+        ) : !sessionReady ? (
+          <div class="flex flex-col gap-md">
+            <p class="type-body text-on-surface-variant text-center">
+              {formError ?? 'Sessão inválida.'}
+            </p>
+            <a
+              href="/admin/login"
+              class="w-full bg-primary-container text-on-primary py-3 rounded-lg type-label font-semibold shadow-cta hover:opacity-90 transition-opacity text-center"
+            >
+              Voltar ao login
+            </a>
+          </div>
+        ) : (
+          <form method="POST" class="flex flex-col gap-md">
+            <p class="type-body text-on-surface-variant mb-sm text-center">
+              Defina sua nova senha de administrador.
+            </p>
+            <div class="flex flex-col gap-1">
+              <label for="password" class="type-label text-on-surface-variant">Nova senha</label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minlength={8}
+                autocomplete="new-password"
+                class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-3 px-4 type-body text-on-surface outline-none transition-colors"
+                style="width: 100%;"
+              />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label for="password_confirm" class="type-label text-on-surface-variant">Confirmar senha</label>
+              <input
+                id="password_confirm"
+                name="password_confirm"
+                type="password"
+                required
+                minlength={8}
+                autocomplete="new-password"
+                class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-3 px-4 type-body text-on-surface outline-none transition-colors"
+                style="width: 100%;"
+              />
+            </div>
+            {formError && (
+              <div role="alert" class="bg-error-container text-on-error-container px-md py-sm rounded-lg type-label flex items-start gap-2">
+                <Icon name="priority_high" size={16} class="mt-0.5 shrink-0" />
+                <span>{formError}</span>
+              </div>
+            )}
+            <button
+              type="submit"
+              class="w-full bg-primary-container text-on-primary py-3 rounded-lg type-label font-semibold shadow-cta hover:opacity-90 transition-opacity"
+            >
+              Atualizar senha
+            </button>
+          </form>
+        )}
+      </div>
+
+      <a href="/admin/login" class="self-center type-caption text-on-surface-variant hover:text-primary-container transition-colors">
+        Voltar ao login
+      </a>
+    </div>
+  </body>
+</html>

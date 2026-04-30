@@ -111,15 +111,19 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
       </div>
       <Reveal delay={420} class="lg:col-span-5 hidden lg:block">
         <div class="relative aspect-[4/3]">
-          <div class="absolute inset-0 bg-secondary/15 translate-x-3 translate-y-3 rounded-3xl"></div>
-          <div class="relative w-full h-full rounded-3xl overflow-hidden bg-gradient-to-br from-primary via-secondary to-primary-container border border-outline-variant/20 flex items-center justify-center text-on-primary">
-            <div class="text-center px-md">
-              <Icon name="forest" size={64} class="mx-auto mb-md opacity-80" />
-              <p class="font-display text-2xl mb-2">Rio Negro · AM</p>
-              <p class="type-body opacity-80 max-w-xs mx-auto">
-                Comunidades ribeirinhas atendidas todo mês de abril.
-              </p>
-            </div>
+          <div class="absolute inset-0 bg-secondary/15 translate-x-3 translate-y-3 rounded-3xl" aria-hidden="true"></div>
+          <img
+            src="/images/mission/hero-equipe-rio-negro.jpg"
+            alt="Equipe da Missão Amazônica reunida à beira do Rio Negro durante a expedição"
+            width={760}
+            height={570}
+            loading="eager"
+            fetchpriority="high"
+            class="relative w-full h-full object-cover rounded-3xl border border-outline-variant/30 shadow-card"
+          />
+          <div class="absolute bottom-md left-md right-md bg-primary/85 text-on-primary px-md py-sm rounded-2xl border border-on-primary/10 backdrop-blur-sm">
+            <p class="font-display text-lg leading-tight mb-0.5">Rio Negro · AM</p>
+            <p class="type-caption opacity-90">Equipe atuando todo abril com comunidades ribeirinhas.</p>
           </div>
         </div>
       </Reveal>
@@ -191,13 +195,19 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
           </div>
         </div>
         <div class="relative">
-          <div class="absolute inset-0 bg-secondary/10 translate-x-4 translate-y-4 rounded-3xl -z-10"></div>
-          <div class="rounded-3xl shadow-card w-full aspect-[4/3] bg-gradient-to-br from-primary via-secondary to-primary-container flex items-center justify-center text-on-primary">
-            <div class="text-center px-md">
-              <Icon name="forest" size={56} class="mx-auto mb-md opacity-80" />
-              <p class="font-display text-2xl mb-2">Rio Negro · AM</p>
-              <p class="type-body opacity-80">Comunidades ribeirinhas atendidas anualmente</p>
-            </div>
+          <div class="absolute inset-0 bg-secondary/10 translate-x-4 translate-y-4 rounded-3xl -z-10" aria-hidden="true"></div>
+          <img
+            src="/images/mission/section-cuidado-criancas.jpg"
+            alt="Missionária da Missão Amazônica conversando com duas crianças ribeirinhas"
+            width={760}
+            height={570}
+            loading="lazy"
+            fetchpriority="low"
+            class="relative w-full aspect-[4/3] object-cover rounded-3xl border border-outline-variant/30 shadow-card"
+          />
+          <div class="absolute bottom-md left-md right-md bg-primary/85 text-on-primary px-md py-sm rounded-2xl border border-on-primary/10 backdrop-blur-sm">
+            <p class="font-display text-lg leading-tight mb-0.5">Cuidado humano</p>
+            <p class="type-caption opacity-90">Cada criança importa. Cada família escutada.</p>
           </div>
         </div>
       </div>
@@ -294,6 +304,7 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
                 imageUrl={item.image_url}
                 urgency={asUrgency(item.urgency)}
                 categoryName={item.categories?.name}
+                categorySlug={item.categories?.slug}
                 targetCents={item.target_amount_cents}
                 confirmedCents={confirmedMap.get(item.id) ?? 0}
               />

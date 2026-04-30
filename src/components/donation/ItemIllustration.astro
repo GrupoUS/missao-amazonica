@@ -1,0 +1,111 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import type { IconName } from '@/lib/icons';
+
+interface Props {
+  categorySlug?: string | null;
+  itemSlug?: string | null;
+  showCaption?: boolean;
+}
+
+const props = Astro.props as Props;
+const { categorySlug, itemSlug, showCaption = true } = props;
+
+interface Palette {
+  gradient: string;
+  iconTint: string;
+  patternTint: string;
+  icon: IconName;
+}
+
+const palettes: Record<string, Palette> = {
+  saude: {
+    gradient: 'from-error-container/40 via-tertiary-container/30 to-surface-container',
+    iconTint: 'text-error/55',
+    patternTint: 'text-error/15',
+    icon: 'medical_services',
+  },
+  alimentacao: {
+    gradient: 'from-tertiary-container/45 via-tertiary-fixed-dim/30 to-surface-container',
+    iconTint: 'text-tertiary/55',
+    patternTint: 'text-tertiary/15',
+    icon: 'shopping_cart',
+  },
+  educacao: {
+    gradient: 'from-secondary-container/40 via-secondary-fixed-dim/30 to-surface-container',
+    iconTint: 'text-secondary/60',
+    patternTint: 'text-secondary/15',
+    icon: 'edit_note',
+  },
+  infraestrutura: {
+    gradient: 'from-primary-container/30 via-secondary-container/40 to-surface-container',
+    iconTint: 'text-primary-container/65',
+    patternTint: 'text-primary-container/15',
+    icon: 'water_drop',
+  },
+  logistica: {
+    gradient: 'from-primary-container/30 via-primary-fixed-dim/30 to-surface-container',
+    iconTint: 'text-primary-container/60',
+    patternTint: 'text-primary-container/15',
+    icon: 'local_shipping',
+  },
+  comunidade: {
+    gradient: 'from-secondary-container/40 via-primary-fixed-dim/30 to-surface-container',
+    iconTint: 'text-secondary/60',
+    patternTint: 'text-secondary/15',
+    icon: 'groups',
+  },
+};
+
+const itemIconOverride: Record<string, IconName> = {
+  'placas-solares-portateis': 'eco',
+  'kits-de-primeiros-socorros': 'medical_services',
+  'cestas-basicas-mensais': 'inventory_2',
+};
+
+const fallback: Palette = {
+  gradient: 'from-primary-container/25 via-secondary-container/30 to-surface-container',
+  iconTint: 'text-primary-container/55',
+  patternTint: 'text-primary-container/15',
+  icon: 'forest',
+};
+
+const slug = (categorySlug ?? '').toLowerCase();
+const palette = palettes[slug] ?? fallback;
+const finalIcon: IconName = (itemSlug ? itemIconOverride[itemSlug] : undefined) ?? palette.icon;
+// Unique-per-card pattern id — combines category + item slug + random nonce so
+// repeated categories on the same page don't share DOM IDs.
+const patternId = `dots-${slug || 'default'}-${itemSlug ?? 'x'}-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<div
+  class:list={[
+    'relative w-full h-full overflow-hidden flex items-center justify-center bg-gradient-to-br',
+    palette.gradient,
+  ]}
+  role="img"
+  aria-label={showCaption ? 'Imagem ilustrativa — foto real será adicionada em breve' : 'Imagem ilustrativa'}
+>
+  <svg
+    class:list={['absolute inset-0 w-full h-full', palette.patternTint]}
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <defs>
+      <pattern id={patternId} x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+        <circle cx="2" cy="2" r="1.4" fill="currentColor" />
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+  </svg>
+
+  <span aria-hidden="true" class:list={['relative z-10 flex items-center justify-center', palette.iconTint]}>
+    <Icon name={finalIcon} size={88} />
+  </span>
+
+  {showCaption && (
+    <span aria-hidden="true" class="absolute bottom-2 right-2 z-10 text-[10px] font-medium tracking-wider uppercase text-on-surface-variant/70 bg-surface-container-lowest/70 backdrop-blur-sm px-2 py-0.5 rounded-full border border-outline-variant/30">
+      Foto em breve
+    </span>
+  )}
+</div>
