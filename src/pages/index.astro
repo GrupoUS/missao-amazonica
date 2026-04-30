@@ -12,29 +12,36 @@ import { asUrgency } from '@/lib/supabase/aliases';
 
 export const prerender = false;
 
+// Service-role client is used here ONLY because (a) generic-type inference on
+// the per-request server client (`Astro.locals.supabase`) regresses to `never`
+// in the current `@supabase/ssr` deprecated overload chain, and (b) every
+// query below targets PII-free surfaces only:
+//   - `landing_stats` (aggregate view, security_invoker = on)
+//   - `donation_items` filtered to `status = 'published'` (no donor data)
+//   - `item_progress` (aggregate view)
+// No `donor_email`, `donor_phone`, or `donation_intents` row reaches this page.
+// TODO: switch to anon RLS when @supabase/ssr typing is fixed upstream.
 const admin = getSupabaseAdmin();
 
-// Stats
-const { data: stats } = await admin
-  .from('landing_stats')
-  .select('total_raised_cents, projects_active, items_completed, reserve_cents, missions_active')
-  .maybeSingle();
-
-// Urgent items (3 most recent published, sorted by urgency desc + sort_order)
-const { data: urgentItemsRaw } = await admin
-  .from('donation_items')
-  .select(`
-    id, slug, title, description, image_url, urgency, target_amount_cents, sort_order,
-    categories(name, slug)
-  `)
-  .eq('status', 'published')
-  .order('urgency', { ascending: false })
-  .order('sort_order', { ascending: true })
-  .limit(3);
+const [{ data: stats }, { data: urgentItemsRaw }] = await Promise.all([
+  admin
+    .from('landing_stats')
+    .select('total_raised_cents, projects_active, items_completed, reserve_cents, missions_active')
+    .maybeSingle(),
+  admin
+    .from('donation_items')
+    .select(`
+      id, slug, title, description, image_url, urgency, target_amount_cents, sort_order,
+      categories(name, slug)
+    `)
+    .eq('status', 'published')
+    .order('urgency', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .limit(3),
+]);
 
 const urgentItems = urgentItemsRaw ?? [];
 
-// Compute confirmed totals for those items
 const itemIds = urgentItems.map((i) => i.id);
 const { data: progress } = await admin
   .from('item_progress')

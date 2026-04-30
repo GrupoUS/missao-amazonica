@@ -11,7 +11,10 @@ import { Toaster as Sonner, type ToasterProps } from 'sonner';
 type Resolved = 'light' | 'dark';
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const [theme, setTheme] = useState<Resolved>('light');
+  const [theme, setTheme] = useState<Resolved>(() => {
+    if (typeof document === 'undefined') return 'light';
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  });
 
   useEffect(() => {
     const root = document.documentElement;

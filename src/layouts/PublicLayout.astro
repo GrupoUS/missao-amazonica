@@ -56,7 +56,7 @@ const year = new Date().getFullYear();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&display=swap"
     />
 
     <meta property="og:type" content="website" />
@@ -69,6 +69,31 @@ const year = new Date().getFullYear();
 
     <meta name="theme-color" content="#012d1d" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0f1411" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+    {/* Organization JSON-LD for SEO + GEO citation readiness */}
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'NGO',
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/og-default.png`,
+      description: 'Plataforma de doações da Missão Amazônica – Sal da Terra. Atuamos nas comunidades ribeirinhas do Rio Negro com transparência total.',
+      areaServed: {
+        '@type': 'Place',
+        name: 'Rio Negro, Amazonas, Brasil',
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer service',
+        email: 'contato@missaoamazonica.org',
+        availableLanguage: ['Portuguese'],
+      },
+    })} />
   </head>
   <body class="bg-background text-on-background antialiased min-h-screen flex flex-col">
     <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>

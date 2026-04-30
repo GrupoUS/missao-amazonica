@@ -48,7 +48,12 @@ export default function ThemeToggle({ variant = 'icon', className }: Props) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = (window.localStorage.getItem(STORAGE_KEY) as Theme | null) ?? 'system';
+    let stored: Theme = 'system';
+    try {
+      stored = (window.localStorage.getItem(STORAGE_KEY) as Theme | null) ?? 'system';
+    } catch {
+      // localStorage may throw in private mode / sandboxed iframes — default to system.
+    }
     setTheme(stored);
     setMounted(true);
   }, []);
@@ -87,7 +92,11 @@ export default function ThemeToggle({ variant = 'icon', className }: Props) {
 
       const swap = () => {
         setTheme(next);
-        window.localStorage.setItem(STORAGE_KEY, next);
+        try {
+          window.localStorage.setItem(STORAGE_KEY, next);
+        } catch {
+          // private mode / quota — class still applied below; just no persistence.
+        }
         applyResolved(resolved);
       };
 

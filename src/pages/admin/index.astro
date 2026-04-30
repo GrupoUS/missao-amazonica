@@ -17,7 +17,7 @@ const admin = getSupabaseAdmin();
 
 const [
   { data: stats },
-  { data: pendingCountRow },
+  { count: pendingDonationsCount },
   { data: items },
   { data: progressRows },
   { data: auditLogs },
@@ -88,7 +88,7 @@ const progressMap = new Map(
           <AnimatedNumber value={projectsActive} client:visible />
         </div>
         <p class="type-caption text-on-surface-variant mt-xs flex items-center gap-1">
-          <Icon name="pending_actions" size={12} /> {pendingCountRow?.length ?? 0} doações pendentes
+          <Icon name="pending_actions" size={12} /> {pendingDonationsCount ?? 0} doações pendentes
         </p>
       </Card>
     </Reveal>
