@@ -9,26 +9,27 @@ workflow_type: prompt-chaining
 
 > **Invoke the `planning` skill now** (`.claude/skills/planning/SKILL.md`) before proceeding.
 > All methodology, output formats, layer stack, classification rules, and checklists are defined there.
+>
+> If `${overlay}/layer-map.md` exists (per `.claude/config.json`), the planning skill will load it for project-specific layer routing.
 
 ---
 
 ## Routing
 
 ```
-Is it L1-L2 (single file, clear root cause)?    → Skip /plan, fix directly
-Is it frontend creation (new page/component)?   → Route to /design first
-Is it backend + frontend hybrid?                → Plan backend first, then /design for UI
-Contains "--build"?                             → Plan → Sprint Contracts → Build → QA loop
+L1-L2 (single file, clear root cause)?           → Skip /plan, fix directly
+Frontend creation (new page/component)?           → Route to /design first
+Backend + frontend hybrid?                        → Plan backend first, then /design for UI
+Contains "--build"?                               → Plan → Sprint Contracts → Build → QA loop
 ```
 
 ## Flags
 
 | Flag | Effect |
-|------|--------|
-| `--build` | Execute plan after approval: Generator → Evaluator loop per sprint |
+|---|---|
+| `--build` | Execute plan after approval — spawn `/implement` automatically |
 | `--plan-only` | Skip evaluator review of the plan itself |
 | `--skip-research` | Skip codebase research (only for well-known trivial patterns) |
-| `--model=opus` | Force Opus 4.6+ — continuous session, no context resets needed |
 | `--sprints=N` | Override sprint count for complex plans |
 
 ---
@@ -36,7 +37,7 @@ Contains "--build"?                             → Plan → Sprint Contracts �
 ## Execution
 
 1. **Classify** the request: Simple (L1-L3) / Medium (L4-L5) / Complex (L6+)
-2. **Research** for Medium+: grep codebase for existing patterns before planning
+2. **Research** for Medium+: invoke `/research` to grep codebase + check external docs before planning
 3. **Produce plan** in the format matching the classification (per planning skill)
 4. **Evaluator gate** for Complex (L6+): spawn `evaluator` agent — must pass all thresholds
 5. **Present plan** and wait for user approval — do not begin implementation
@@ -52,13 +53,13 @@ Contains "--build"?                             → Plan → Sprint Contracts �
 
 ---
 
-## Output Template (Medium / Complex)
+## Output template (Medium / Complex)
 
 ```markdown
 ## Plan: [Feature Name]
 
 **Complexity:** L[N] — [one-line justification]
-**Layers:** [NeonDash layers touched, in execution order]
+**Layers:** [layers touched, in execution order — derived from project layer map]
 **Assumptions:** [any ASSUMED constraints]
 
 ### Phase 1: [Layer] [SEQUENTIAL]

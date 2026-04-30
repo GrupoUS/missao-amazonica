@@ -5,72 +5,78 @@ description: Use when starting sessions to load historical context, or after fix
 
 # Evolution Core
 
-Sistema minimalista de memória persistente.
+Minimalist persistent memory system across Claude Code sessions.
 
-## Como Funciona
+## How It Works
 
-**Hooks Python** (em `.claude/hooks/`) capturam eventos automaticamente:
-- `session_context.py` → Carrega contexto histórico no SessionStart
-- `task_completed.py` → Registra conclusões em PostToolUse
-- `subagent_log.py` → Log de sub-agentes em Stop
+**Python hooks** (in `.claude/hooks/`) capture events automatically:
+- `session_context.py` → loads historical context on SessionStart
+- `task_completed.py` → records completions on PostToolUse
+- `subagent_log.py` → logs sub-agents on Stop
 
-> Todos os hooks são `.py` — shell scripts (`.sh`) são **proibidos** neste projeto.
+> All hooks are `.py` — shell scripts (`.sh`) are intentionally not used here for portability across Windows / macOS / Linux.
 
-**CLI** (`memory_manager.py`) para queries manuais com SQLite.
+**CLI** (`memory_manager.py`) for manual SQLite queries.
 
-## Arquivos Gerados
+## Generated Files
 
 ```
 .claude/docs/evolution/
-├── errors.jsonl     # Erros capturados pelos hooks
-├── sessions.jsonl   # Logs de sessão
-└── memory.db        # Banco SQLite (via CLI)
+├── errors.jsonl     # Errors captured by hooks
+├── sessions.jsonl   # Session logs
+└── memory.db        # SQLite DB (via CLI)
 ```
 
 ## CLI Commands
 
 ```bash
-# Inicializar banco
+# Initialize database
 python .claude/skills/evolution-core/scripts/memory_manager.py init
 
-# Gerenciar sessões
+# Manage sessions
 python .claude/skills/evolution-core/scripts/memory_manager.py session start -t "task"
 python .claude/skills/evolution-core/scripts/memory_manager.py capture "observation"
 python .claude/skills/evolution-core/scripts/memory_manager.py session end -s "summary"
 
-# Carregar contexto
+# Load context
 python .claude/skills/evolution-core/scripts/memory_manager.py load_context --project "$PWD"
 
-# Estatísticas
+# Stats
 python .claude/skills/evolution-core/scripts/memory_manager.py stats
 ```
 
 ---
 
-## Captura de Aprendizados (/evolve)
+## Learning Capture (/evolve)
 
-### Template de Captura
+### Capture Template
 
 ```bash
-# O CLI já suporta captura de observações
+# CLI already supports observation capture
 python .claude/skills/evolution-core/scripts/memory_manager.py capture \
-  "Problema: [descrição] | Root: [causa] | Fix: [solução]" \
+  "Problem: [description] | Root: [cause] | Fix: [solution]" \
   -t bug_fix
 ```
 
-### Funções Disponíveis
+### Available Commands
 
-| Comando | Descrição |
-|---------|-----------|
-| `capture "desc" -t "tool"` | Captura observação |
-| `session start -t "task"` | Inicia sessão |
-| `session end -s "summary"` | Finaliza sessão |
-| `load_context --project PATH` | Carrega contexto histórico |
-| `stats` | Estatísticas do banco |
+| Command | Description |
+|---|---|
+| `capture "desc" -t "tool"` | Capture observation |
+| `session start -t "task"` | Start session |
+| `session end -s "summary"` | End session |
+| `load_context --project PATH` | Load historical context |
+| `stats` | Database statistics |
 
-### Integração com /evolve
+### Integration with `/evolve`
 
-O comando `/evolve` usa este CLI para:
-1. Persistir aprendizados automaticamente
-2. Sugerir aprimoramentos em skills
-3. Atualizar AGENTS.md das subpastas
+The `/evolve` command uses this CLI to:
+1. Persist learnings automatically
+2. Suggest improvements to skills
+3. Update subdirectory `AGENTS.md` files
+
+## Configuration
+
+This skill is **fully generic** — no project-specific configuration required. Database paths are relative to the project root; sessions are scoped per project automatically via the `--project` flag.
+
+To use in a different project: copy `.claude/skills/evolution-core/` and `.claude/hooks/{session_context,task_completed,subagent_log}.py` to the new project. The hooks are wired in `.claude/settings.json` — copy those entries too.

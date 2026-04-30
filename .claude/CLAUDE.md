@@ -109,7 +109,7 @@ Codebase search (`Grep`/`Read`/`Glob`) is the **fallback for internal questions,
 - **Max 5 agent spawns** per user request → pause and checkpoint with the user
 - **Confidence < 3** on a critical finding → flag as assumption and ask the user
 - **Scope expands** beyond the original request → STOP and confirm
-- **Quality gate fails 2× consecutively** → invoke `/recover`
+- **Quality gate fails 2× consecutively** → invoke `/debug recover`
 
 ---
 

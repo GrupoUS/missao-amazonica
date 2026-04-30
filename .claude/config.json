@@ -1,0 +1,47 @@
+{
+  "$schema": "./config.schema.json",
+  "project": {
+    "name": "missao-amazonica",
+    "displayName": "Missão Amazônica — Sal da Terra",
+    "stack": "astro-hybrid-supabase",
+    "stagingUrl": "http://localhost:4321",
+    "productionUrl": "",
+    "locale": "pt-BR"
+  },
+  "paths": {
+    "backendRoot": "src/pages/api",
+    "frontendRoot": "src",
+    "schemaRoot": "supabase/migrations",
+    "stylesRoot": "src/styles",
+    "componentsRoot": "src/components",
+    "libRoot": "src/lib"
+  },
+  "tooling": {
+    "packageManager": "bun",
+    "buildTool": "astro",
+    "typeChecker": "astro-check",
+    "linter": "biome",
+    "testRunner": "",
+    "deployer": "vercel",
+    "frontendFramework": "astro+react-islands",
+    "database": "postgres",
+    "orm": "supabase-js"
+  },
+  "gates": {
+    "lighthouse": {
+      "performance": 95,
+      "accessibility": 95,
+      "bestPractices": 95,
+      "seo": 95
+    },
+    "lcp": 2500,
+    "cls": 0,
+    "inp": 100,
+    "initialJsKb": 50
+  },
+  "overlay": ".claude/overlay/missao-amazonica",
+  "rulesDir": ".claude/rules",
+  "templatesDir": ".claude/templates",
+  "agentsFile": "AGENTS.md",
+  "claudeMdFile": ".claude/CLAUDE.md"
+}

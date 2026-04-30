@@ -1,5 +1,5 @@
 ---
-description: Capture learnings after successful tasks, improve skills and AGENTS.md to prevent recurring errors.
+description: Capture learnings after successful tasks. Updates skills and project AGENTS.md to prevent recurring errors.
 workflow_type: prompt-chaining
 ---
 
@@ -9,17 +9,17 @@ workflow_type: prompt-chaining
 
 ---
 
-## 0. MODE DETECTION
+## 0. Mode detection
 
-If `$ARGUMENTS` contains `auto`:
-1. Skip Sections 1-5 (manual capture)
-2. Execute AutoResearch Loop per `_shared.md` Section 5
-3. Target skill: second arg after `auto` (e.g. `/evolve auto meta-api-integration`)
-4. No skill specified: find all skills with `evals.json` and run sequentially
+| Token in `$ARGUMENTS` | Behavior |
+|---|---|
+| (none) | Manual capture flow (§ 1-5) |
+| `auto` | Skip § 1-5, run AutoResearch Loop per `_shared.md` § 10. Target skill is second arg (e.g. `/evolve auto debugger`). Default: all skills with `evals.json`. |
+| `handoff` | Write session state per `.claude/templates/handoff-template.md` |
 
 ---
 
-## 1. FIRST ACTION
+## 1. First action
 
 ```typescript
 Skill("evolution-core"); // Persistent memory + CLI
@@ -27,29 +27,29 @@ Skill("evolution-core"); // Persistent memory + CLI
 
 ---
 
-## 2. CAPTURE FLOW
+## 2. Capture flow
 
-### 2.1 Gather Session Context
+### 2.1 Gather session context
 
 Analyze the current conversation to identify:
 
 ```markdown
 ## Session Context
 
-### Task Completed
-[Brief description of what was done]
+### Task completed
+[brief description]
 
-### Problem Found
-[Bug/error/issue description]
+### Problem found
+[bug/error/issue]
 
-### Root Cause
-[Identified root cause]
+### Root cause
+[identified root cause]
 
-### Solution Applied
-[Code or specific changes]
+### Solution applied
+[code or specific changes]
 
 ### Validation
-[Commands run: type-check, lint, test, etc.]
+[commands run: type-check, lint, test, etc.]
 ```
 
 ### 2.2 Persist to evolution-core
@@ -64,35 +64,37 @@ python .claude/skills/evolution-core/scripts/memory_manager.py capture \
 
 ---
 
-## 3. SKILL SELECTION
+## 3. Skill selection
 
-Based on modified file paths, identify affected skills:
+Based on modified file paths + `_shared.md` § 6 (Skill-to-Domain Matrix), identify affected skills.
 
-- `apps/api/src/routers/` → `debugger`
-- `apps/api/drizzle/` → `debugger`
-- `apps/web/src/` → `debugger`
-- `apps/api/src/services/` → `meta-api-integration` (if Meta/WhatsApp)
+Generic mapping (override via `${overlay}/routing-supplements.md` if present):
+
+- `${paths.backendRoot}` → `debugger`
+- `${paths.schemaRoot}` → `debugger` + (Postgres-only) `supabase-postgres-best-practices`
+- `${paths.frontendRoot}` → `debugger` + `ui-ux-pro-max` (if styling/design)
 - Performance changes → `performance-optimization`
 - Skill files themselves → `skill-creator`
+- Memory infrastructure → `evolution-core`
 
-Ask the user which skills to update if multiple are relevant.
+Ask user which skills to update if multiple are relevant and not obvious.
 
 ---
 
-## 4. IMPROVE SKILLS
+## 4. Improve skills
 
-For each selected skill, add to its `references/` or relevant SKILL.md section:
+For each selected skill, add to `references/` or the relevant SKILL.md section:
 
 ```markdown
 ## Case: [Bug/Problem Name]
 
-**Symptom:** [What the user perceives]
-**Root Cause:** [Technical cause]
-**Fix:** [Solution applied]
+**Symptom:** [user-perceived]
+**Root cause:** [technical]
+**Fix:** [solution applied]
 **Files:** [file list]
 **Validation:** [gates run]
 
-### Anti-Pattern Discovered
+### Anti-pattern discovered
 
 // ❌ WRONG
 [problematic code]
@@ -101,27 +103,25 @@ For each selected skill, add to its `references/` or relevant SKILL.md section:
 [correct code]
 ```
 
-Update type based on finding:
+Categorize:
 
 | Type | Where | When |
-|------|-------|------|
-| Stability Rule | Dedicated section | Rules to prevent crashes |
-| Anti-Pattern | Existing section | Problematic patterns |
-| Known Case | `references/` | Complex documented cases |
-| Quick Reference | Existing table | Quick tips |
+|---|---|---|
+| Stability rule | dedicated section | Rules to prevent crashes |
+| Anti-pattern | existing section | Problematic patterns |
+| Known case | `references/` | Complex documented cases |
+| Quick reference | existing table | Quick tips |
 
 ---
 
-## 5. IMPROVE AGENTS.MD
+## 5. Improve AGENTS.md (project-level)
 
-Based on modified files, identify target AGENTS.md:
+Identify the target AGENTS.md from the modified file path:
 
-| Modified File | Target AGENTS.md |
-|---------------|-----------------|
-| `apps/api/src/routers/*.ts` | `apps/api/src/AGENTS.md` |
-| `apps/api/drizzle/schema.ts` | `apps/api/drizzle/AGENTS.md` |
-| `apps/web/src/components/*.tsx` | `apps/web/src/AGENTS.md` |
-| `packages/ai-gateway/*` | `packages/ai-gateway/AGENTS.md` |
+- Edits in `${paths.backendRoot}/**` → backend AGENTS.md if it exists
+- Edits in `${paths.frontendRoot}/**` → frontend AGENTS.md if it exists
+- Edits in `${paths.schemaRoot}/**` → schema AGENTS.md if it exists
+- Otherwise → root `AGENTS.md`
 
 Add a new section:
 
@@ -130,17 +130,17 @@ Add a new section:
 
 > Added after bug fix in `[file]`.
 
-**Problem:** [Description]
-**Cause:** [Root cause]
-**Solution:** [Fix applied]
+**Problem:** [description]
+**Cause:** [root cause]
+**Solution:** [fix applied]
 ```
 
 ---
 
-## 6. SUMMARY
+## 6. Summary
 
 ```
-✅ Learning captured successfully!
+Learning captured successfully.
 
 Memory: evolution-core updated
 Skills improved: [list]
@@ -151,7 +151,7 @@ AGENTS.md updated: [list]
 
 ## References
 
-- **evolution-core**: `.claude/skills/evolution-core/SKILL.md`
-- **skill-creator**: `.claude/skills/skill-creator/SKILL.md`
-- **run_evals.py**: `.claude/skills/skill-creator/scripts/run_evals.py`
-- **AutoResearch Loop**: `_shared.md` Section 5
+- `evolution-core` skill: `.claude/skills/evolution-core/SKILL.md`
+- `skill-creator` skill: `.claude/skills/skill-creator/SKILL.md`
+- AutoResearch Loop: `_shared.md` § 10
+- Handoff template: `.claude/templates/handoff-template.md`

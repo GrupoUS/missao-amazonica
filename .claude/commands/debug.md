@@ -1,197 +1,148 @@
 ---
-description: Debug workflow with intelligent triage, parallel sub-agent investigation, and unified fix protocol. Modes: debug, super-audit, frontend-debug, backend-debug, auth-db-debug.
+description: Unified debug command. Modes (positional arg) — default: triage + fix · audit: full-stack 9-dimension audit · frontend: static React/UI + E2E browser · backend: API/service · auth-db: auth/permissions/RLS · recover: failure recovery after 2+ failed attempts.
 workflow_type: routing
 ---
 
-## Stopping Conditions
-
-- STOP proposing fixes before root cause investigation
-- STOP after 3 failed fix attempts → invoke `/recover`
-- ASK if error affects production data or requires schema migration
-- ASK if fix scope expands beyond the originally reported error
-
----
-
-# /debug — Efficient Debugging with Intelligent Triage
+# /debug — Intelligent Debugging
 
 **ARGUMENTS**: $ARGUMENTS
 
----
-
-## 0. MODE SELECTION
-
-| Mode | Aliases | When |
-|------|---------|------|
-| `debug` (default) | — | Bug investigation with root cause analysis |
-| `super-audit` | `audit`, `full-audit` | Full-stack 7-dimension audit → use `/audit` |
-| `frontend-debug` | `frontend`, `ui`, `react` | React/UI + E2E browser testing → use `/debug-frontend` |
-| `backend-debug` | `backend`, `api`, `trpc`, `hono` | Hono/tRPC/service failures |
-| `auth-db-debug` | `auth`, `db`, `clerk`, `tenant`, `role`, `permission` | Auth, permissions, tenant isolation |
-| `auto` | — | Debug + AutoResearch Loop per `_shared.md` Section 5 |
-
-> **audit:** Execute `/audit` command instead.
-> **frontend-debug:** Execute `/debug-frontend` command instead.
+> First positional arg = mode. Examples:
+> ```
+> /debug                    # default — triage + investigate + fix
+> /debug audit              # full-stack audit (9 dimensions, 4 parallel agents)
+> /debug frontend           # static + Playwright E2E
+> /debug backend            # API/service/handler/middleware
+> /debug auth-db            # auth, permissions, tenant isolation, RLS
+> /debug recover            # failure recovery (after 2+ failed attempts)
+> ```
+> Anything after the mode token is forwarded as scope (e.g., `/debug audit scope=payments`).
 
 ---
 
-## IRON LAW
+## Stopping Conditions (apply to ALL modes)
+
+- STOP proposing fixes before root cause investigation
+- STOP after 3 failed fix attempts → switch to `/debug recover`
+- ASK if error affects production data or requires schema migration
+- ASK if fix scope expands beyond originally reported error
+
+---
+
+## Iron Law
 
 ```
 NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.
 ```
 
-If investigation is not complete, you CANNOT propose corrections.
+If investigation isn't complete, you cannot propose corrections.
 
 ---
 
-## 1. FIRST ACTION: Context + Skill + Gather Errors
+## 0. Mode dispatch
 
-### 1.0 Context Load (WISC)
+Parse first positional token from `$ARGUMENTS`:
 
-Per `_shared.md` Section 4:
-- Bug in `apps/web/` → `/prime-frontend`
-- Bug in `apps/api/` → `/prime-backend`
-- Multi-layer → `/prime`
+| Token | Section to execute |
+|---|---|
+| (none) / `debug` / `auto` | § 1 (default flow) |
+| `audit` / `full` | § 2 (audit mode) |
+| `frontend` / `ui` / `react` | § 3 (frontend mode) |
+| `backend` / `api` | § 4 (backend mode) |
+| `auth-db` / `auth` / `db` / `permissions` | § 5 (auth-db mode) |
+| `recover` | § 6 (recovery mode) |
+
+Modes share the **§ 0.1 Setup** preamble.
+
+### 0.1 Setup (every mode)
 
 ```typescript
-Skill("debugger"); // 4-phase methodology + Iron Law
+Skill("debugger"); // Iron Law + 4-phase methodology
 ```
 
-### Quality Gates (canonical)
+Read `.claude/config.json` (paths, tooling, gates, overlay). If overlay path exists, also load `${overlay}/anti-patterns.md` for project-specific anti-patterns.
 
-Per `_shared.md` Section 1. Also check CI:
+Run baseline quality gates from `_shared.md` § 1 using `${tooling.typeChecker}` / `${tooling.linter}` / `${tooling.testRunner}`.
 
-```bash
-gh run list -L 5
-gh run view --log-failed
+Context load via `_shared.md` § 4 (WISC):
+- Bug in frontend area → `/prime frontend`
+- Bug in backend area → `/prime backend`
+- Multi-layer → `/prime fullstack`
+
+---
+
+## 1. Default mode — Triage + investigate + fix
+
+### 1.1 Quick triage (classify before investigating)
+
+Detect error category in <10s:
+
+| Signature | Category | Quick action |
+|---|---|---|
+| Generic server / `INTERNAL_SERVER_ERROR` | Backend handler | Read cited route/router |
+| `TypeError: Cannot read properties of undefined` | Unguarded access | Find unguarded `[0]` / `.x` |
+| Type-checker error (`TS2769`, `TS2345`, etc.) | Type mismatch | Compare schema vs DB column type |
+| `415 Unsupported Media Type` | Content-Type / framework | Verify request headers |
+| `CORS error` / preflight | Middleware ordering | CORS before auth |
+| `hydration mismatch` | SSR/CSR divergence | Check effects vs render |
+| Cache stale / stale-while-revalidate | Client query config | staleTime = refetchInterval |
+| `ERR_MODULE_NOT_FOUND` | Import/export | Check barrel `index.ts` |
+| `FORBIDDEN` / `401` / `403` | Auth/role | Check procedure level / RLS |
+| `connection timeout` / `ECONNREFUSED` | Infra/DB | Check connection string + pool |
+
+**Known-pattern shortcut.** Before investigating, check:
+- `.claude/rules/stability.md` (Checklist A-L)
+- Tier 2 domain rules (auto-loaded via routing matrix)
+- `${overlay}/anti-patterns.md` (project anti-patterns)
+- Recent breaking changes in dependencies (Tavily search if needed)
+
+If error matches a known pattern → apply documented fix directly (L1-L2), no agents.
+
+### 1.2 Complexity classification
+
+Per `_shared.md` § 2.
+
+### 1.3 Investigation by complexity
+
+**L1-L2 — Direct fix.** Read file → identify root cause → apply minimal fix → run gates.
+
+**L3 — Single agent.** Spawn 1 `debugger` agent (foreground): investigate root cause, return findings table with file:line. DO NOT FIX — report only.
+
+**L4-L5 — Parallel agents.** Spawn in same message:
+
+```
+code-archaeologist (explorer, background):
+  - Find exact file:line where flow breaks
+  - git log --oneline -10 -- <affected-files> for recent regressions
+  - Map dependency chain
+  - Return findings table (# | Finding | Confidence 1-5 | Source | Impact). DO NOT FIX.
+
+regression-hunter (explorer, background):
+  - Read .claude/skills/debugger/references/methodology.md (or pack-guides.md)
+  - Cross-check stability rules + ${overlay}/anti-patterns.md
+  - If MATCH: return pattern + root cause + fix guidance
+  - If NO MATCH: top-3 hypotheses with evidence for/against. DO NOT FIX.
 ```
 
----
+If agents return contradictory findings or no definitive file:line → escalate to `codex:rescue` (foreground, diagnosis-only):
 
-## 2. QUICK TRIAGE — Classify Before Investigating
+```
+"Diagnose root cause only — do not apply any fixes.
+ Context: [paste agent findings table]
+ Error: [paste exact error]
+ Focus: [file:line range]"
+```
 
-> Rule: Do not spawn parallel agents for trivial bugs. Classify first.
+**L6+ — Full investigation.** Above + `db-state-inspector` (debugger, background): schema check, FK indexes, type exports, RLS/tenant boundaries, auth procedure levels.
 
-### 2.1 Error Signature Detection
+### 1.4 While agents run
 
-Identify the error CATEGORY in <10 seconds:
-
-| Signature | Category | Layer | Quick Action |
-|-----------|----------|-------|--------------|
-| `TRPCError` / `INTERNAL_SERVER_ERROR` | Backend procedure | API | Read the cited router |
-| `TypeError: Cannot read properties of undefined` | Unguarded access | API/Frontend | Find `[0]` without guard |
-| `TS2769` / `TS2345` type error | Type mismatch | Build | Check Zod schema vs DB enum |
-| `415 Unsupported Media Type` | tRPC v11 Content-Type | API | Verify Content-Type header |
-| `CORS error` / `preflight` | Middleware ordering | _core | CORS must come before auth |
-| `hydration mismatch` | SSR/CSR divergence | Frontend | Check useEffect vs render |
-| `staleTime`/cache stale | TanStack Query config | Frontend | staleTime MUST = refetchInterval |
-| `ERR_MODULE_NOT_FOUND` | Import/export | Build | Check barrel file index.ts |
-| `FORBIDDEN` / auth error | Procedure level | API | Check admin vs protected procedure |
-| `connection timeout` / `ECONNREFUSED` | Infra/DB | DB | Check DATABASE_URL and pool |
-
-### 2.2 Known Pattern Check
-
-Before investigating, check if the error matches a documented rule:
-
-- Stability rules: `.claude/rules/stability.md` (Checklist A-L)
-- Domain rules (Tier 2 — auto-loaded): `backend.md`, `frontend.md`, `database.md`, `integrations.md`
-- Recent breaking changes: tRPC 11, Hono middleware ordering, React 19 patterns, Zod 3.x coerce pitfall, Drizzle Neon HTTP vs WebSocket
-
-**If the error matches a known pattern** → apply the documented fix directly (L1-L2), no agents needed.
-
-### 2.3 Complexity Classification
-
-Per `_shared.md` Section 2.
-
----
-
-## 3. MEMORY (Optional — Does Not Block)
-
-Check for relevant prior bug patterns in auto-memory:
-- MEMORY.md is auto-injected into context — review it for similar bugs
-- `git log -S "$ARGUMENTS" --oneline -10` as fallback
-
----
-
-## 4. INVESTIGATION BY COMPLEXITY
-
-### L1-L2: Direct Fix
-
-Read the file with the error → identify root cause → apply minimal fix → run quality gates.
-
-### L3: Single Agent
-
-Spawn 1 `debugger` agent (foreground): investigate root cause, return findings table with file:line. DO NOT FIX — report only.
-
-### L4-L5: Parallel Agents (Default)
-
-Spawn 2-3 agents simultaneously in the same message:
-
-**code-archaeologist** (`explorer`, background):
-- Find the exact file:line where the flow breaks
-- `git log --oneline -10 -- <affected-files>` for recent regressions
-- Map dependency chain (component → procedure → query → table)
-- Return Findings Table (# | Finding | Confidence 1-5 | Source | Impact). DO NOT FIX.
-
-**regression-hunter** (`explorer`, background):
-- Read `.claude/skills/debugger/references/consolidated-domain-rules.md`
-- Check stability rules (A-L) and Common Root Causes Catalog
+- Read files cited in the error stack — answers are usually there
+- Grep for suspicious patterns in affected scope
 - Compare with similar working implementations
-- If MATCH: return pattern + root cause + fix guidance
-- If NO MATCH: top-3 hypotheses with evidence for/against. DO NOT FIX.
+- Form your own hypothesis
 
-**Codex escalation (L4-L5 — when agents return contradictory findings):**
-If agents disagree or return no definitive file:line → spawn `codex:codex-rescue` (foreground):
-```
-Prompt: "Diagnose root cause only — do not apply any fixes.
-Context: [paste agent findings table]
-Error: [paste exact error]
-Focus: [file:line range from investigation]"
-```
-Codex runs in a separate GPT-5.4 thread with full workspace access. Feed its diagnosis into Section 6.
-
-### L6+: Full Investigation
-
-Same as L4-L5 plus:
-
-**db-state-inspector** (`debugger`, background):
-- Read schema for structure
-- Check FK indexes, type exports, enum matching
-- Verify tenant isolation (entity owner in WHERE clauses)
-- Check auth procedure levels (admin vs protected)
-- Return problematic tables/queries + diagnostic queries. DO NOT FIX.
-
-### Backend-Debug Mode
-
-Spawn `code-archaeologist` + `regression-hunter` (background) with focus on:
-- tRPC procedures, Hono middleware, service layer, Zod schemas
-
-### Auth/DB-Debug Mode
-
-Spawn `code-archaeologist` + `regression-hunter` + `db-state-inspector` (background) with focus on:
-- Auth middleware, procedure auth levels, tenant WHERE clauses
-- User/role records, FK integrity, tenant boundaries (code-archaeologist + regression-hunter)
-- Auth patterns: TOCTOU, owner filter, webhook secret mismatch (regression-hunter)
-
----
-
-## 5. WHILE AGENTS RUN
-
-Do your own parallel investigation:
-1. Read the files cited in the error — the stack trace has the answers
-2. Grep for suspicious patterns in the affected scope
-3. Compare with similar working implementations
-4. Form your own hypothesis
-
----
-
-## 6. CONSOLIDATE HYPOTHESES
-
-When agents complete:
-
-1. Identify convergence — 2+ agents found the same problem → high confidence
-2. Form MAIN HYPOTHESIS with file:line
-3. List alternatives in case the main hypothesis fails
+### 1.5 Consolidate hypotheses
 
 ```markdown
 ## Main Hypothesis
@@ -203,132 +154,328 @@ When agents complete:
 - Own investigation: [finding]
 
 ## Alternative Hypotheses
-1. [alternative 1]
-2. [alternative 2]
+1. [alternative]
+2. [alternative]
 ```
 
----
-
-## 7. IMPLEMENT FIX
-
-### Rules
+### 1.6 Implement fix
 
 - Fix the SOURCE, not the symptom
-- NEVER "while I'm here..." — scope creep kills debugging
-- Run quality gates AFTER EACH fix (per `_shared.md` Section 1)
+- NEVER "while I'm here…" — scope creep kills debugging
+- Run quality gates AFTER EACH fix
 
-### Sequential Mode (default — issues in same file/flow)
-
-ONE fix at a time. Never multiple simultaneous changes in the same flow.
+**Sequential mode (default — same file/flow):** ONE fix at a time.
 
 ```
 Edit → Quality Gates → Pass? → Next fix
-                      → Fail? → Analyze new error → Back to Triage (Section 2)
+                       → Fail? → Analyze new error → Back to triage
 ```
 
-### Parallel Mode (INDEPENDENT issues in distinct areas)
-
-When investigation confirmed multiple issues with no dependency between them
-(e.g., CRM area + financeiro area, or frontend + backend of unrelated flows):
-
-Spawn one `debugger` agent per area — all in one message. Each agent:
-- Gets the confirmed root cause (file:line from Section 6)
-- Reads target file before editing
-- Applies minimal fix
-- Runs: `bun run type-check && bun run lint:oxlint:check`
-- Reports: file:line edited + gate output
-
-**Parallelization criteria:**
+**Parallel mode (independent issues, distinct areas):** spawn one `debugger` agent per area in same message. Each: read target → minimal fix → run gates → report file:line + gate output.
 
 | Criterion | Parallel OK | Sequential required |
-|-----------|-------------|---------------------|
-| Different files, no cross-imports | YES | — |
-| Same router/component | — | YES |
-| Frontend + backend of SAME flow | — | YES (backend first) |
-| Completely distinct domains | YES | — |
-| Schema change + code that uses schema | — | YES (schema first) |
+|---|---|---|
+| Different files, no cross-imports | ✅ | — |
+| Same router/component | — | ✅ |
+| Frontend + backend of SAME flow | — | ✅ (backend first) |
+| Schema change + code that uses schema | — | ✅ (schema first) |
 
-After all parallel fixes: run full gate suite. If gates fail, one fix conflicted — resolve sequentially.
+After parallel fixes: full gate suite. If gates fail → resolve sequentially.
 
-**If 2+ fixes failed in the same area:** Escalate to `codex:rescue` before stopping.
-```
-Invoke Skill("codex:rescue") with:
-  - confirmed root cause (file:line from Section 6)
-  - failed fix attempts (what was tried + error output)
-  - "provide a complete fix, do not just diagnose"
-```
-Codex runs in a fresh GPT-5.4 thread with full workspace access. Do not duplicate its work.
-If rescue also fails → STOP. Consult evaluator (Mode 3: Architecture Analysis) or escalate to user with full failure log.
+**If 2+ fixes failed in same area:** escalate to `codex:rescue` for full fix. Then if still failing → switch to `/debug recover`.
 
----
+### 1.7 Cleanup
 
-## 8. CLEANUP
+After validated fixes:
 
-After fixes are validated:
-
-### Post-Fix Code Review (L4+ or non-trivial fixes)
-
-Before closing, verify the changed code meets quality bar:
-
-| Check | Threshold | Action if Failed |
-|-------|-----------|-----------------|
+| Check | Threshold | Action if failed |
+|---|---|---|
 | Cyclomatic complexity | No function > 10 branches | Extract sub-functions |
-| Security | No injection points, auth gaps, PII exposure introduced | Fix before closing |
+| Security | No new injection / auth gaps / PII exposure | Fix before closing |
 | New dependencies | None added without deliberate choice | Audit or remove |
 | Dead code | No commented-out blocks introduced | Remove |
 | Root cause test | Fix has a regression test | Add test |
 
-For PRs: provide constructive feedback — specific file:line, explain the why, suggest the alternative, acknowledge what was done well. Prioritize: CRITICAL → blocking, MAJOR → address in same PR, MINOR → suggest for follow-up.
+Auth/payments/PII fixes (L4+) → run `codex:rescue` adversarial review:
 
-- Save learning to auto-memory if the bug revealed a new pattern
-- Use `/evolve` to persist root cause, fix, and validation to evolution-core
-- Use `/handoff` if session is long — saves state for next session
+```
+"Run codex adversarial-review --scope working-tree.
+ Focus: [security / auth / data integrity].
+ Report findings only — do not apply fixes."
+```
 
-**Codex adversarial review (auth/payments/PII fixes — L4+):**
-After quality gates pass on sensitive fixes, run an independent Codex pass:
-```
-Invoke Skill("codex:rescue") with:
-  "Run codex adversarial-review --scope working-tree.
-   Focus: [security / auth / data integrity].
-   Report findings only — do not apply fixes."
-```
-Present findings per `codex:codex-result-handling`: show issues, STOP, ask user which to fix.
+Present per `codex:codex-result-handling`: show issues → STOP → ask user which to fix.
+
+After close: optionally `/evolve` to persist learnings.
 
 ---
 
-## 9. Agent/Mode Matrix
+## 2. Audit mode — `/debug audit` (full-stack 9 dimensions)
 
-| Bug Type | Mode | Sub-agents | Skill |
-|----------|------|------------|-------|
-| API/tRPC error | `backend-debug` | code-archaeologist + regression-hunter | `debugger` |
-| UI/React | `/debug-frontend` | Per that command | `debugger` |
-| Auth/permissions | `auth-db-debug` | code-archaeologist + regression-hunter + db-state-inspector | `debugger` |
-| Database | `auth-db-debug` | code-archaeologist + db-state-inspector | `debugger` |
-| Performance | `debug` | Handoff to performance-optimizer | `performance-optimization` |
-| Meta/WhatsApp | `backend-debug` | code-archaeologist + regression-hunter | `meta-api-integration` |
-| Baileys | `backend-debug` | code-archaeologist + regression-hunter | `baileys-integration` |
-| AI/Gemini | `backend-debug` | code-archaeologist | `google-ai-sdk` |
-| Full audit | `/audit` | 4 parallel (evaluator Mode 3/debugger/debugger/frontend-specialist) | all |
+> Comprehensive audit. For targeted bug fixing use default mode.
+> **PR/diff variant:** `/debug audit pr` — runs `codex adversarial-review --scope branch` first, then covers code-quality + dependencies + tech-debt + security on changed files only.
+
+### 2.1 Setup
+
+Run § 0.1, then load `.claude/templates/audit-agent-prompts.md` for the 4 agent prompts and consolidation report template.
+
+### 2.2 Quality gates baseline
+
+Per `_shared.md` § 1 using config tooling. Also collect metrics:
+
+```bash
+# Total source files (adapt extensions per project)
+find ${PATHS_BACKEND_ROOT} ${PATHS_FRONTEND_ROOT} -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.astro" -o -name "*.py" -o -name "*.go" \) | wc -l
+
+# Test files
+find ${PATHS_BACKEND_ROOT} ${PATHS_FRONTEND_ROOT} -type f \( -name "*.test.*" -o -name "*.spec.*" \) | wc -l
+
+git log --oneline -20
+```
+
+### 2.3 Severity classification
+
+Per `templates/audit-agent-prompts.md` § Severity classification (P0-P3 + auto-flag thresholds: coverage < 80% on critical paths; cyclomatic > 10; CVE ≥ 7.0).
+
+### 2.4 Spawn 4 parallel agents
+
+Use prompts verbatim from `templates/audit-agent-prompts.md`:
+
+- **Agent 1** — `evaluator` (Mode 3) — Architecture & Structure (D1-D2)
+- **Agent 2** — `debugger` — Code Quality (D3 + D8 dependencies + D9 tech-debt)
+- **Agent 3** — `debugger` — Documentation + Missing Flows (D4-D5)
+- **Agent 4** — `frontend-specialist` — UX + Tests/CI (D6-D7)
+
+All `run_in_background: true`, same message. Replace `${PATHS_*}` in prompts from config before spawning.
+
+### 2.5 While agents run
+
+Run quality gates from § 2.2 and collect repo metrics.
+
+### 2.6 Consolidate report
+
+Produce `docs/AUDIT-REPORT-{YYYY-MM-DD}.md` per template in `templates/audit-agent-prompts.md` § Consolidation report template.
+
+### 2.7 Codex adversarial cross-check (P0/P1)
+
+When report surfaces P0/P1 → optionally run `codex:rescue` with adversarial-review on those file:line targets. Show findings → STOP → ask user.
+
+### 2.8 PR variant — `/debug audit pr`
+
+Before § 2.4, run `codex adversarial-review --scope branch` for an independent baseline diff review. Then narrow the 4 agents to D3 + D8 + D9 + security on changed files only. Output: per-file inline feedback (no exec summary).
 
 ---
 
-## 10. Escalation → Stop Signs
+## 3. Frontend mode — `/debug frontend` (static + Playwright E2E)
 
-**Before stopping, escalate:**
-- 2+ failed fixes in the same area → `codex:rescue` (Section 7)
-- Contradictory agent findings → `codex:rescue` diagnosis mode (Section 4)
-- Architecture-level blocker → `evaluator` (Mode 3: Architecture Analysis)
+**Iron Laws (frontend):**
+```
+NO FIXES WITHOUT STATIC DIAGNOSIS + VISUAL EVIDENCE FIRST.
+NO INTERACTION WITHOUT A SNAPSHOT BEFORE IT.
+NO FIX WITHOUT A SNAPSHOT/SCREENSHOT AS EVIDENCE.
+NO FIX WITHOUT A PASSING UNIT REPRODUCTION TEST.
+```
 
-**STOP if you:**
-- Propose a fix before finding root cause
-- Make multiple simultaneous changes
+### 3.1 Setup
+
+Run § 0.1. Run `/prime frontend`.
+
+### 3.2 Quality gates baseline
+
+Run unit-test suite first (cheap, catches logic errors): `${tooling.testRunner}` against frontend project. Then `${tooling.typeChecker}` and `${tooling.linter}`. Only proceed to browser if unit tests pass.
+
+### 3.3 Static diagnosis (parallel)
+
+```
+Agent 1 (frontend-specialist, background):
+  - Component tree, hooks, rerender triggers
+  - Token/layout issues, controlled-vs-uncontrolled state
+  - Flickering, unstable rerenders, key warnings
+  - Scope: $ARGUMENTS (after mode token)
+  - Return: file:line + root cause hypothesis. DO NOT FIX.
+
+Agent 2 (debugger, background):
+  - Frontend ↔ backend integration paths used by the failing flow
+  - Silent failures, latency issues, suspense interactions
+  - Mutations wrapped in try-catch (stability rule J)
+  - Post-mutation cache invalidation
+  - Return: handler/procedure with potential issues + hypothesis. DO NOT FIX.
+```
+
+### 3.4 Route + coverage discovery (parallel)
+
+```
+Agent 1 (explorer, background):
+  - Map all routes recursively under ${PATHS_FRONTEND_ROOT}
+  - List: path, component, functionality
+  - Identify critical user flows (auth, CRUD, integrations, settings)
+  - List expected interactions per flow
+  - Return: route table + prioritized journeys
+
+Agent 2 (explorer, background):
+  - Map existing E2E coverage (look for e2e/, tests/e2e, playwright/)
+  - For each test: routes covered, assertions, interactions tested
+  - Cross-reference; identify routes WITHOUT coverage
+  - Return: coverage table (route | tested? | file | quality) + gaps list
+```
+
+### 3.5 Browser session
+
+Resolve target URL: `${project.stagingUrl}` from config (override via `/debug frontend url=http://...`).
+
+```
+mcp__playwright__browser_navigate({ url: TARGET_URL })
+mcp__playwright__browser_snapshot()             # accessibility baseline (~120 tokens)
+mcp__playwright__browser_console_messages()
+```
+
+### 3.6 Journey loop (per critical flow)
+
+```
+1. Navigate
+2. Snapshot (ALWAYS before interaction — refs go stale)
+3. Interact using refs from snapshot (click / fill / select)
+4. Wait: browser_wait_for({ text: "..." })
+5. Capture: browser_snapshot()  # default 120 tokens
+   browser_take_screenshot()    # only for visual regression (1500 tokens)
+6. Verify: browser_console_messages() + browser_network_requests() (catch 4xx/5xx)
+7. If issue:
+   a) Document: snapshot + console_messages
+   b) Write unit reproduction test → must FAIL (confirms repro)
+   c) Fix in source
+   d) Re-run unit test → must PASS
+   e) Re-test E2E: navigate → snapshot → interact → snapshot
+   f) Run gates (type-check + lint)
+```
+
+### 3.7 Viewports
+
+```
+Desktop: browser_resize({ width: 1280, height: 720 })
+Mobile:  browser_resize({ width: 375,  height: 667 })
+Tablet:  browser_resize({ width: 768,  height: 1024 })  # optional
+```
+
+### 3.8 Per-step verification
+
+- [ ] Element exists/visible (snapshot)
+- [ ] Interaction produces expected state (snapshot)
+- [ ] No JS errors (console_messages)
+- [ ] No failed requests (network_requests)
+- [ ] Loading states appear/disappear
+- [ ] Visual feedback after actions (toast/alert)
+- [ ] Navigation returns to correct state
+
+### 3.9 Report
+
+```markdown
+## E2E Test Report
+Date: {date} | Target: {url} | Viewports: Desktop, Mobile
+
+### Summary
+| Metric | Value |
+|---|---|
+| Journeys tested | X |
+| Snapshots captured | X |
+| Issues found | X |
+| Issues fixed | X |
+| Issues pending | X |
+
+### Journeys
+| # | Journey | Status | Steps | Issues |
+
+### Issues
+| # | Severity | Journey | Step | Description | Evidence | Status |
+
+### Coverage
+| Area | Routes | Tested | % |
+```
+
+### 3.10 Cleanup
+
+```
+mcp__playwright__browser_close()
+```
+
+Run final quality gates per `_shared.md` § 1.
+
+---
+
+## 4. Backend mode — `/debug backend`
+
+Run § 0.1, then default flow (§ 1) with focus on:
+- API routes / handlers / middleware
+- Service layer, validators (Zod or equivalent)
+- Database access patterns
+- External provider calls (timeouts, idempotency)
+
+Spawn `code-archaeologist` + `regression-hunter` (background).
+
+Loaded rules: `.claude/rules/backend.md` + `.claude/rules/integrations.md` + `.claude/rules/stability.md`. Plus `${overlay}/routing-supplements.md` if present.
+
+---
+
+## 5. Auth-DB mode — `/debug auth-db`
+
+Run § 0.1, then default flow (§ 1) with focus on:
+- Auth middleware, session, role/procedure levels
+- Tenant isolation in WHERE clauses
+- RLS policies, FK integrity, type/enum mismatches
+- TOCTOU patterns, owner filter, webhook secret mismatch
+
+Spawn `code-archaeologist` + `regression-hunter` + `db-state-inspector` (background).
+
+Loaded rules: `.claude/rules/database.md` + `.claude/rules/backend.md` + `.claude/rules/stability.md`. Plus `${overlay}/anti-patterns.md` (RLS specifics) if present.
+
+---
+
+## 6. Recover mode — `/debug recover` (failure recovery)
+
+> Trigger: 2+ failed fix attempts on same hypothesis · quality gate fails 2× · user signals "this isn't working" · confidence < 3 after multi-file investigation.
+
+Load `.claude/templates/recovery-protocol.md` and execute its 5 steps verbatim:
+
+1. **STOP** — halt all fix attempts; no more changes
+2. **DOCUMENT** — structured failure report (original error, attempts, why each failed, current state, hypothesis tree)
+3. **REVERT** (if applicable) — show diff first; confirm with user before destructive ops
+4. **CONSULT evaluator (Mode 3)** — pass failure report; expect root-cause analysis + recommended approach
+5. **REPORT** — present evaluator analysis verbatim, options with effort estimates (S/M/L), ask user
+
+Anti-patterns: looping past 2 attempts · skipping documentation · reverting without showing diff · vague evaluator question.
+
+---
+
+## 7. Agent / mode matrix
+
+| Bug type | Mode | Sub-agents | Skill |
+|---|---|---|---|
+| API / handler error | `backend` | code-archaeologist + regression-hunter | `debugger` |
+| UI / component / hydration | `frontend` | (per § 3) + frontend-specialist + debugger | `debugger` |
+| Auth / permissions / RLS | `auth-db` | code-archaeologist + regression-hunter + db-state-inspector | `debugger` |
+| Database / schema / migration | `auth-db` | code-archaeologist + db-state-inspector | `debugger` |
+| Performance | (run `/perf` instead) | — | `performance-optimization` |
+| Full audit | `audit` | 4 parallel (evaluator/debugger/debugger/frontend-specialist) | all |
+| Failure recovery | `recover` | evaluator (Mode 3) | — |
+
+---
+
+## 8. Escalation hierarchy
+
+Before stopping, escalate in this order:
+1. 2+ failed fixes in same area → `codex:rescue` for full fix
+2. Contradictory agent findings → `codex:rescue` diagnosis mode
+3. Architecture-level blocker → `evaluator` (Mode 3)
+4. All escalations exhausted → `/debug recover` → user decides
+
+**Hard STOP signs:**
+- Proposing a fix before finding root cause
+- Multiple simultaneous changes in same flow
 - "Just try this and see"
-- Skip quality gate verification
-- Ignore evidence contradicting your hypothesis
-- Have escalated to both codex:rescue AND evaluator (Mode 3) without resolution → escalate to user
+- Skipping quality gate verification
+- Ignoring evidence contradicting your hypothesis
 
 ---
 
-## 11. Auto Mode
+## 9. Auto mode
 
-If `auto` in `$ARGUMENTS`: complete debug normally (Sections 1-8), then execute AutoResearch Loop per `_shared.md` Section 5 on skills used in this session.
+If `auto` token in `$ARGUMENTS`: complete default flow (§ 1), then run AutoResearch Loop per `_shared.md` § 5 on skills used in this session.

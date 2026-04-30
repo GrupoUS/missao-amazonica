@@ -258,7 +258,7 @@ When an error or unexpected result occurs:
 4. **EXECUTE** — apply the fix.
 5. **VERIFY** — confirm fix works; check no regression in adjacent flows.
 
-After **2 failed attempts on the same hypothesis**, escalate via `evaluator` agent (Mode 3) or `/recover`. Do not loop.
+After **2 failed attempts on the same hypothesis**, escalate via `evaluator` agent (Mode 3) or `/debug recover`. Do not loop.
 
 ---
 
