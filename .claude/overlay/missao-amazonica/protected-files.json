@@ -1,0 +1,8 @@
+{
+  "$comment": "Project-specific protected files for Missão Amazônica. Loaded by .claude/hooks/protect_files.py.",
+  "exact": [],
+  "segments": [],
+  "contains": [
+    "supabase/migrations/"
+  ]
+}

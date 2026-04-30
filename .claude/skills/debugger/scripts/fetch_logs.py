@@ -1,13 +1,39 @@
 #!/usr/bin/env python3
 """fetch_logs.py - Debug Skill - Error Log Fetcher.
 Aggregates logs from GitHub Actions, VPS containers, and Neon for error analysis.
+
+Repo and VPS host are read from environment variables:
+  - GITHUB_REPO              owner/repo (defaults to git remote origin)
+  - PROJECT_VPS_HOST         SSH host for container inspection (optional)
 """
+import json
 import os
 import subprocess
 import sys
+from pathlib import Path
 
-REPO = "GrupoUS/neondash"
-VPS_HOST = os.environ.get("NEONDASH_VPS_HOST", "")
+
+def detect_repo() -> str:
+    """Resolve owner/repo: $GITHUB_REPO > git remote origin > config.json::project.name."""
+    if os.environ.get("GITHUB_REPO"):
+        return os.environ["GITHUB_REPO"]
+    try:
+        r = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, timeout=3,
+        )
+        url = r.stdout.strip()
+        if url.startswith("git@github.com:"):
+            return url.split(":", 1)[1].rstrip(".git")
+        if url.startswith("https://github.com/"):
+            return url.removeprefix("https://github.com/").rstrip(".git")
+    except Exception:
+        pass
+    return ""
+
+
+REPO = detect_repo()
+VPS_HOST = os.environ.get("PROJECT_VPS_HOST", "")
 
 
 def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess:
@@ -63,7 +89,7 @@ def fetch_vps_status() -> None:
 
     if not VPS_HOST:
         print("⚠️  VPS host not configured")
-        print("   Set NEONDASH_VPS_HOST to enable SSH log collection")
+        print("   Set PROJECT_VPS_HOST to enable SSH log collection")
         print()
         return
 

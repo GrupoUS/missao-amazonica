@@ -7,6 +7,10 @@ description: Use for runtime performance, build performance, database and API sp
 
 Single performance skill for four goals: speed, database performance, security baseline, and SEO/GEO baseline.
 
+> Reads `.claude/config.json` for `${tooling.*}` (gate commands), `${project.stagingUrl}` (PSI target), `${gates.*}` (thresholds), `${paths.*}` (search scopes). Project-specific SEO/route specifics loaded from `${overlay}/seo-supplement.md` if present.
+
+---
+
 ## Core Rules
 
 1. Measure before changing code.
@@ -14,281 +18,190 @@ Single performance skill for four goals: speed, database performance, security b
 3. Re-measure with the same tool and scenario.
 4. Keep fixes minimal (KISS) and only for active issues (YAGNI).
 
+---
+
 ## Packs
 
 Pick one pack per run:
 
-| Pack                    | Use When                                                                        | Minimum Output                                   |
-| ----------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `performance-core`      | Slow load, sluggish interaction, high API p95, large bundle                     | before/after metrics + exact fixes               |
-| `database-performance`  | Slow API p95, N+1 queries, SELECT *, missing indexes, pool exhaustion, cold starts | before/after query metrics + exact fixes       |
-| `security-baseline`     | Release hardening, OWASP sanity, dependency and header checks                   | findings by severity + mitigation                |
-| `seo-geo-baseline`      | Search visibility, crawlability, AI citation readiness                          | indexability/schema/CWV report + action list     |
+| Pack | Use when | Minimum output |
+|---|---|---|
+| `performance-core` | Slow load, sluggish interaction, high API p95, large bundle | before/after metrics + exact fixes |
+| `database-performance` | Slow API p95, N+1, SELECT *, missing indexes, pool exhaustion, cold starts | before/after query metrics + exact fixes |
+| `security-baseline` | Release hardening, OWASP sanity, dependency + header checks | findings by severity + mitigation |
+| `seo-geo-baseline` | Search visibility, crawlability, AI citation readiness | indexability/schema/CWV report + action list |
+
+---
 
 ## Baseline Commands
 
 ```bash
-bun run type-check
-bun run lint:check
-bun run build
-ANALYZE=true bun run build
+${tooling.packageManager} run ${tooling.typeChecker}
+${tooling.packageManager} run lint
+${tooling.packageManager} run build
+ANALYZE=true ${tooling.packageManager} run build      # if project supports analyze flag
 ```
 
 ## Live Docs Lookup (Context7)
 
-Before applying optimizations, fetch live docs:
-- `drizzle-orm` → resolve library ID, query for query optimization, prepared statements, `inArray()` batch patterns
-- `@tanstack/react-query` → resolve for `staleTime`, `gcTime`, `skipToken`, polling patterns
-- `recharts` → resolve for lazy loading and tree-shaking patterns
+Before applying optimizations, fetch live docs via `mcp__claude_ai_Context7__*` for:
+- ORM (query optimization, prepared statements, batch APIs)
+- Query/cache library (`staleTime`, `gcTime`, polling patterns)
+- Framework runtime (rendering modes, hydration strategies)
+- Charting / heavy UI libs (lazy loading + tree-shaking patterns)
 
 ---
 
-## Pack Commands
+## `database-performance` Pack
 
-### `database-performance`
+Use when API p95 is high, queries are slow, or DB is suspected bottleneck.
 
-Use when API p95 is high, queries are slow, or the DB is a suspected bottleneck.
-
-**Step 1: Connection Pool Audit**
-
-Read `apps/api/src/db.ts` and check the `Pool` constructor:
+**Step 1 — Connection pool audit.** Locate the pool initialization (typically `${paths.libRoot}/db.*` or `lib/database.*`). Verify:
 
 ```typescript
-// Correct — tuned for Neon serverless
+// Generic Postgres pool template — adapt to driver
 const pool = new Pool({
   connectionString,
-  max: 10,                        // Neon free tier max ~20; leave headroom for other services
-  idleTimeoutMillis: 30_000,      // 30s — close idle connections to avoid stale/billing
-  connectionTimeoutMillis: 10_000, // 10s — fail fast on Neon cold starts
+  max: 10,                          // serverless: leave headroom; long-running: tune to load
+  idleTimeoutMillis: 30_000,        // close idle connections
+  connectionTimeoutMillis: 10_000,  // fail fast on cold starts
 });
 ```
 
-Report as findings if any of `max`, `idleTimeoutMillis`, or `connectionTimeoutMillis` are absent.
+Report as findings if any of `max`, `idleTimeoutMillis`, or `connectionTimeoutMillis` are absent. For HTTP-only drivers (e.g., serverless Postgres), prepared statement support varies — verify against runtime before applying.
 
-> **Note:** `@neondatabase/serverless` Pool accepts the same constructor options as `pg.Pool`. The `options` field for statement_timeout (`options: '-c statement_timeout=30000'`) may vary by driver version — verify against runtime before applying.
-
-**Step 2: Query Anti-Pattern Scan**
+**Step 2 — Query anti-pattern scan.**
 
 ```bash
-# SELECT * (missing column specification)
-grep -rn "db\.select()\.from" apps/api/src/ --include="*.ts"
+# SELECT * (missing column specification) — adapt grep to ORM idiom
+grep -rn "select \*\|\.select()\.from" ${paths.backendRoot}/ --include="*.ts" --include="*.sql"
 
-# N+1 pattern: look for await db. inside a for/while loop
-grep -A5 "for (const\|for (let\|for (var\|while (" apps/api/src/ -rn --include="*.ts" | grep "await db\."
+# N+1: await db. inside for/while loop
+grep -A5 "for (const\|for (let\|while (" ${paths.backendRoot}/ -rn --include="*.ts" | grep "await db\."
 ```
 
 | Severity | Pattern | Fix |
-|----------|---------|-----|
-| High | `db.select().from(table)` with no columns | Specify `db.select({ col1, col2 })` |
-| High | `await db.` inside `for` loop | Pre-fetch all IDs → single query with `inArray()` |
-| Medium | List queries without `.limit()` | Add `.limit(N)` — cap at 100 for list endpoints |
+|---|---|---|
+| High | `select *` / `db.select().from(table)` with no columns | Specify columns explicitly |
+| High | `await db.` inside `for` loop | Pre-fetch IDs → single batched query (`IN (...)` / `inArray`) |
+| Medium | List queries without `LIMIT` | Cap at 100 for list endpoints |
 | Medium | Sequential independent queries | Wrap in `Promise.all([...])` |
 
-**Step 3: Index Audit**
-
-For every FK column (`.references(() => table.id)`), confirm a corresponding `index("...").on(table.fkCol)` exists in the same table definition.
+**Step 3 — Index audit.** For every FK column, confirm a corresponding index exists in the same table definition or migration:
 
 ```bash
-grep -n "\.references(" apps/api/drizzle/ -r --include="*.ts"
-grep -n "index(" apps/api/drizzle/ -r --include="*.ts"
+grep -rn "references\|FOREIGN KEY" ${paths.schemaRoot}/ ${paths.backendRoot}/
+grep -rn "create index\|index(" ${paths.schemaRoot}/ ${paths.backendRoot}/
 ```
 
-**Step 4: Prepared Statement Candidates**
+Per project rules, every FK gets an index in the **same migration** that creates the FK.
 
-Identify hot-path queries for Drizzle `.prepare()`:
+**Step 4 — Prepared-statement candidates.** Identify hot-path queries: every-request reads, frequently-called service functions, scheduler/cron hot loops. ORM-specific syntax varies — Drizzle uses `.prepare(name)`, Postgres native uses `PREPARE name AS …`.
+
+**Step 5 — Batch operations.**
 
 ```typescript
-import { placeholder } from 'drizzle-orm';
-
-const getUserByClerkIdStmt = db
-  .select({ id: users.id, clerkId: users.clerkId, email: users.email, role: users.role })
-  .from(users)
-  .where(eq(users.clerkId, placeholder('clerkId')))
-  .limit(1)
-  .prepare('get_user_by_clerk_id');
-
-const [user] = await getUserByClerkIdStmt.execute({ clerkId: 'clerk_xxx' });
+// Instead of: for (const item of items) { await db.insert(table).values(item); }
+await db.insert(table).values(items);   // single round-trip
 ```
 
-Use prepared statements for: every-request queries, frequently-called service functions, and scheduler/cron hot loops.
+For deeper Postgres-specific guidance (RLS performance, partitioning, advisory locks, JSONB indexing) → defer to skill `supabase-postgres-best-practices`.
 
-**Step 5: Batch Operations**
+---
 
-```typescript
-// Instead of: for (const item of items) { await db.insert(table).values(item) }
-await db.insert(table).values(items); // single round-trip
+## `performance-core` Pack
 
-// Instead of: for (const id of ids) { await db.select().from(t).where(eq(t.id, id)) }
-const results = await db.select().from(t).where(inArray(t.id, ids));
-const map = new Map(results.map(r => [r.id, r]));
-```
+For runtime speed (frontend + API).
 
-**Step 6: Report**
+**Step 1 — Frontend baseline.** Run PSI against `${project.stagingUrl}` (or `localhost` for dev). Capture per-route scores + CWV. Compare against `${gates.lighthouse.*}` and `${gates.lcp/cls/inp}` thresholds.
+
+**Step 2 — Bundle analysis.** Run analyzer for the detected build tool (`vite-bundle-visualizer`, `webpack-bundle-analyzer`, `source-map-explorer`, etc.). Report largest chunks + duplicate deps + splitting opportunities.
+
+**Step 3 — Component perf.** For React projects, run React DevTools profiler or React Doctor (project-dependent — gate on `${tooling.frontendFramework}`). Look for: unnecessary rerenders, unstable callback refs, large list rendering without virtualization.
+
+**Step 4 — Network.** Audit cache strategies (`Cache-Control` headers, ETag, ISR/revalidate), CDN coverage on static assets, compression (gzip/brotli), HTTP/2 multiplexing.
+
+**Step 5 — API latency.** Measure p50/p95/p99 on hot endpoints. For each endpoint over budget: trace where time is spent (DB, external calls, serialization, middleware). Apply targeted fix.
+
+---
+
+## `security-baseline` Pack
+
+OWASP top-10 sanity sweep + dependency + header check.
+
+**Step 1 — Dependencies.** Run `${tooling.packageManager} audit` (or `npm audit` / `pnpm audit` / `yarn audit`). Cross-check against GHSA / Snyk for any package with no maintainer activity > 2 years.
+
+**Step 2 — Secret scanning.** `git log --all -G "ApiKey|SecretKey|password|token|secret" --since="6 months ago"` — or use `gitleaks` / `truffleHog` for thorough scan. Confirm `.env` files are gitignored.
+
+**Step 3 — HTTP headers.** Check production responses for: `Strict-Transport-Security`, `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`.
+
+**Step 4 — Auth/authz audit.** Re-read `.claude/rules/backend.md` + `.claude/rules/database.md` (or project equivalents). Verify per-route auth scoping. For RLS systems: confirm policies on every table; test anon read against sensitive tables (must deny).
+
+**Step 5 — Input validation.** Confirm every public endpoint validates body via schema (Zod / Valibot / Yup / equivalent) at module scope, never inside handlers.
+
+---
+
+## `seo-geo-baseline` Pack
+
+For search visibility + AI-citation readiness.
+
+**Step 1 — Indexability.** `robots.txt` + `sitemap.xml` exist + reachable. `<meta name="robots">` is `index,follow` on public pages, `noindex` on private pages.
+
+**Step 2 — Structured data.** Schema.org JSON-LD on key pages: `Organization`, `WebSite`, `BreadcrumbList`, content-type-specific (`Article`, `Product`, `FAQPage`, etc.).
+
+**Step 3 — OG / Twitter cards.** `<meta property="og:*">` + `<meta name="twitter:*">` on every page. Image dimensions set explicitly.
+
+**Step 4 — Locale.** `<html lang="${project.locale}">`. Hreflang tags if multi-locale.
+
+**Step 5 — CWV.** Same thresholds as `performance-core`. CLS = 0 mandatory for SEO score.
+
+**Step 6 — AI citation (GEO).** Author bylines, dates, source links — make it easy for LLM crawlers to cite. Schema.org `Article` with `author`, `datePublished`, `dateModified`. Avoid hidden text / cloaking.
+
+If `${overlay}/seo-supplement.md` exists, also load project-specific SEO rules (sitemap routes, locale-specific quirks, donation-listing schema, etc.).
+
+---
+
+## Output format (every pack)
 
 ```markdown
-## Database Performance Report
+## Pack: <name>
 
-Pack: database-performance
+### Baseline
+| Metric | Before |
+|---|---|
 
-### Connection Pool
-| Setting | Current | Recommended | Status |
-|---------|---------|-------------|--------|
-| max | unset | 10 | FAIL |
-| idleTimeoutMillis | unset | 30000 | FAIL |
-| connectionTimeoutMillis | unset | 10000 | FAIL |
+### Findings
+| # | Severity | Issue | File:line | Fix |
 
-### Query Anti-Patterns
-| # | File | Line | Issue | Severity |
-|---|------|------|-------|----------|
+### Applied fixes
+| Optimization | Before | After | Δ |
 
-### Index Gaps
-| Table | FK Column | Has Index? |
-|-------|-----------|------------|
-
-### Changes
-1. [change] -> [impact]
-
-### Risks / Follow-up
-- [remaining risk]
-```
-
-**Bottleneck Routing (DB-specific)**
-
-```
-API p95 > 140ms  → run Step 1 (pool) + Step 2 (query scan)
-Cold start delay → check pool.connectionTimeoutMillis + Neon region latency
-N+1 detected     → batch with inArray() or join
-SELECT * detected → specify needed columns in db.select({ col1, col2 })
-Pool exhaustion  → lower max or add idleTimeoutMillis
-Sequential queries → wrap independent queries in Promise.all
+### Remaining opportunities
+[ranked by impact]
 ```
 
 ---
 
-### `performance-core`
+## References
 
-> Full PSI API reference: `references/psi-api.md`
-> Full Unlighthouse reference: `references/unlighthouse.md`
-
-**Step 1: Measure with PSI API (primary)**
-
-```bash
-# Mobile audit
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://staging.neondash.com.br&strategy=mobile&category=performance&category=accessibility&category=best-practices&category=seo&locale=pt-BR" -o /tmp/psi-mobile.json
-
-# Desktop audit
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://staging.neondash.com.br&strategy=desktop&category=performance&category=accessibility&category=best-practices&category=seo&locale=pt-BR" -o /tmp/psi-desktop.json
-
-# Parse scores
-jq '{perf: (.lighthouseResult.categories.performance.score * 100 | round), a11y: (.lighthouseResult.categories.accessibility.score * 100 | round), bp: (.lighthouseResult.categories["best-practices"].score * 100 | round), seo: (.lighthouseResult.categories.seo.score * 100 | round)}' /tmp/psi-mobile.json
-```
-
-**Step 2: Local Lighthouse (for auth pages or deeper analysis)**
-
-```bash
-npx lighthouse https://staging.neondash.com.br --preset=desktop --port=9222 --chrome-flags="--headless=new --disable-gpu --no-first-run --no-default-browser-check --disable-background-networking --disable-extensions"
-npx lighthouse https://neondash.com.br --preset=desktop --port=9333 --chrome-flags="--headless=new --disable-gpu --no-first-run --no-default-browser-check --disable-background-networking --disable-extensions"
-```
-
-**Step 3: React Doctor**
-
-```bash
-npx -y react-doctor@latest . --yes --verbose
-```
-
-> Full React Doctor remediation loop: `references/react-doctor.md`
+| File | Content |
+|---|---|
+| `references/psi-api.md` | PageSpeed Insights API usage |
+| `references/react-doctor.md` | React Doctor config + interpretation |
+| `references/seo-playbook.md` | Generic SEO baseline (sitemap, robots, headers, schema.org) |
+| `references/unlighthouse.md` | Site-wide Unlighthouse scan setup |
+| `${overlay}/seo-supplement.md` | **Project-specific** SEO routes/locale (loaded if overlay configured) |
 
 ---
 
-### `security-baseline`
+## Configuration
 
-```bash
-bun audit
-gitleaks detect --source .
-curl -I https://staging.neondash.com.br
-```
+This skill reads `.claude/config.json` for:
+- `${tooling.packageManager}` / `${tooling.typeChecker}` / `${tooling.linter}` — gate commands
+- `${project.stagingUrl}` / `${project.productionUrl}` — PSI/Lighthouse targets
+- `${project.locale}` — SEO locale
+- `${gates.lighthouse.*}` / `${gates.lcp/cls/inp/initialJsKb}` — pass thresholds
+- `${paths.backendRoot}` / `${paths.frontendRoot}` / `${paths.schemaRoot}` / `${paths.libRoot}` — search scopes
+- `${overlay}` — project-specific SEO supplement
 
-Check at least: access control, injection resistance, auth flows, misconfiguration, secrets.
-
----
-
-### `seo-geo-baseline`
-
-> Full SEO playbook (robots, sitemap, metadata, constraints): `references/seo-playbook.md`
-
-**Step 1: PSI API for SEO scores**
-
-```bash
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://neondash.com.br&strategy=mobile&category=seo&category=accessibility&locale=pt-BR" | jq '{seo: (.lighthouseResult.categories.seo.score * 100 | round), a11y: (.lighthouseResult.categories.accessibility.score * 100 | round)}'
-```
-
-**Step 2: Robots and Sitemap**
-
-```bash
-curl https://staging.neondash.com.br/robots.txt
-curl https://neondash.com.br/robots.txt
-curl -I https://staging.neondash.com.br/sitemap.xml
-curl -I https://neondash.com.br/sitemap.xml
-```
-
-**Step 3: Local Lighthouse (optional, for deeper SEO audits)**
-
-```bash
-npx lighthouse https://staging.neondash.com.br --preset=desktop --port=9222 --chrome-flags="--headless=new --disable-gpu --no-first-run --no-default-browser-check --disable-background-networking --disable-extensions"
-```
-
-Use distinct explicit ports for sequential runs (`9222` for staging, `9333` for production).
-If Lighthouse cannot find Chrome automatically, set `CHROME_PATH` to your local Chrome/Chromium executable.
-
-Check at least: metadata, structured data, canonical links, robots, sitemap, CWV.
-
----
-
-## Targets
-
-| Metric      | Target   |
-| ----------- | -------- |
-| LCP         | <= 2.5s  |
-| INP         | <= 200ms |
-| CLS         | <= 0.1   |
-| API p95     | <= 140ms |
-| Main bundle | <= 200KB |
-
-## Bottleneck Routing
-
-- Initial load slow → inspect critical rendering path and bundle split.
-- Interaction slow → inspect re-renders and long handlers.
-- API slow → inspect N+1 patterns and missing indexes. Use `database-performance` pack.
-- Memory growth → inspect subscription/listener/interval cleanup.
-- DB pool exhaustion → tune `max`, `idleTimeoutMillis`, `connectionTimeoutMillis` in Pool constructor.
-
-## High-Value Fixes
-
-**Frontend:** Route-level lazy loading for heavy pages and modals. Remove unstable props/callbacks causing unnecessary re-renders. Virtualize long lists.
-
-**Backend/DB:** Remove N+1 queries with joins or batch strategy. Ensure FK columns are indexed. Avoid unbounded list queries.
-
-## Guardrails
-
-- Do not optimize based on intuition only.
-- Do not over-memoize cheap operations.
-- Do not expand scope to unrelated refactors.
-- Do not claim improvement without before/after evidence.
-
-## Report Template
-
-```markdown
-## Optimization Report
-
-Pack: [performance-core|security-baseline|seo-geo-baseline]
-
-| Metric | Before | After | Delta |
-| ------ | ------ | ----- | ----- |
-| ...    | ...    | ...   | ...   |
-
-### Changes
-1. [change] -> [impact]
-
-### Risks / Follow-up
-- [remaining risk]
-```
+To use in another project: copy `.claude/skills/performance-optimization/`, point `.claude/config.json` at the new tooling/paths/URLs, and optionally write `${overlay}/seo-supplement.md` for project-specific SEO/route specifics.

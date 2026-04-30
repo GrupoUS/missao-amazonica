@@ -107,36 +107,28 @@ SAFE_PATTERNS = [
     re.compile(r"^column -t"),
     re.compile(r"^less "),
     re.compile(r"^more "),
-    # Bun development
+    # Package manager development commands (Bun / npm / pnpm / yarn)
+    re.compile(r"^(bun|npm|pnpm|yarn) (run )?(test|check|lint|build|dev|start|type-check|format)"),
+    re.compile(r"^(bun|npm|pnpm|yarn) install"),
     re.compile(r"^bun test"),
-    re.compile(r"^bun run check"),
-    re.compile(r"^bun run lint"),
-    re.compile(r"^bun install"),
-    re.compile(r"^bun x "),
-    re.compile(r"^bun run build"),
-    re.compile(r"^bun dev"),
-    re.compile(r"^bun start"),
-    re.compile(r"^bun run db:"),
-    re.compile(r"^bun run type-check"),
     re.compile(r"^bun run"),
     re.compile(r"^bun -"),
-    re.compile(r"^bunx ultracite"),
-    re.compile(r"^bunx oxlint"),
-    re.compile(r"^bunx @biomejs/biome"),
-    re.compile(r"^bunx biome"),
+    re.compile(r"^bun x "),
+    re.compile(r"^bunx "),
+    re.compile(r"^npx "),
+    re.compile(r"^pnpm dlx "),
+    re.compile(r"^yarn dlx "),
     re.compile(r"^tsgo"),
+    re.compile(r"^tsc(\s|$)"),
     re.compile(r'^python(3)?( -X [^ ]+)? "?\.claude/'),
     re.compile(r'^python(3)?( -X [^ ]+)? "?scripts/'),
     re.compile(r'^py -3 "?\.claude/'),
     re.compile(r'^py -3 "?scripts/'),
-    # Neon CLI
-    re.compile(r"^neonctl "),
-    # Kilo CLI read-only introspection
-    re.compile(r"^kilo agent list"),
-    re.compile(r"^kilo debug config"),
-    re.compile(r"^kilo status"),
+    # Database / cloud CLIs (read-only introspection)
+    re.compile(r"^(neonctl|supabase|fly|vercel|railway|wrangler) "),
+    re.compile(r"^(psql|mysql|sqlite3) "),
     # Version checks
-    re.compile(r"^(python3?|bun|docker|git|tsgo|kilo) --version"),
+    re.compile(r"^(python3?|bun|node|deno|npm|pnpm|yarn|docker|git|tsgo|tsc) --version"),
     # File operations (safe)
     re.compile(r"^mkdir -p"),
     re.compile(r"^touch "),
@@ -282,8 +274,8 @@ def main() -> None:
             _allow()
             return
 
-    # 6. Default: allow bun/bunx commands (block dangerous subcommands)
-    if re.match(r"^(bun|bunx) ", command):
+    # 6. Default: allow package-manager commands (block dangerous subcommands)
+    if re.match(r"^(bun|bunx|npm|npx|pnpm|yarn) ", command):
         if DANGEROUS_BUN_PATTERN.search(command):
             _deny("BLOCKED: Dangerous package manager command")
             return

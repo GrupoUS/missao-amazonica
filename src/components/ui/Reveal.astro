@@ -1,0 +1,22 @@
+---
+/**
+ * Reveal — fade-in + 8px translate-up when scrolled into viewport.
+ * Server-rendered (no JS hydration). The IntersectionObserver lives in
+ * PublicLayout's inline body script and adds `is-visible` to every `.reveal`.
+ *
+ * Respects `prefers-reduced-motion` via the @layer utilities rule in global.css.
+ */
+interface Props {
+  delay?: number; // ms
+  as?: 'div' | 'section' | 'article' | 'li' | 'span';
+  class?: string;
+}
+
+const { delay = 0, as = 'div', class: className } = Astro.props as Props;
+const Tag = as;
+const style = delay > 0 ? `--reveal-delay: ${delay}ms;` : undefined;
+---
+
+<Tag class:list={['reveal', className]} style={style}>
+  <slot />
+</Tag>

@@ -19,8 +19,8 @@ Task({
 CONTEXT: [paste bug description or failing URL]
 
 BROWSER MODE SELECTION:
-- Public page (landing, /precos, etc.) → agent-browser headless
-- Authenticated page (/meu-dashboard, /financeiro, /crm, etc.) → python .claude/scripts/cdp.py
+- Public page (landing, /pricing, public-facing routes) → agent-browser headless
+- Authenticated page (/dashboard, /admin, app-internal routes) → python .claude/scripts/cdp.py
 
 MODE A — HEADLESS (public pages):
   agent-browser open "[URL]" --headless

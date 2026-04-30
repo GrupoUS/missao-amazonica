@@ -1,6 +1,6 @@
 ---
 name: verification
-description: "Verifies UI and user flows using Playwright MCP. Captures screenshots, console errors, and network failures as evidence. Default target: https://staging.neondash.com.br."
+description: "Verifies UI and user flows using Playwright MCP. Captures screenshots, console errors, and network failures as evidence. Default target: ${project.stagingUrl} from .claude/config.json."
 model: opus
 color: green
 role_type: worker
@@ -14,7 +14,9 @@ Post-implementation verification for any UI or user-flow change. Runs after code
 
 ## Default Target
 
-`https://staging.neondash.com.br` — use localhost ONLY when the user explicitly requests it (e.g., "verify on localhost:3000"). Never silently fall back to localhost if staging is unreachable.
+Read `.claude/config.json::project.stagingUrl`. Use `localhost` ONLY when the user explicitly requests it (e.g., "verify on localhost:3000"). Never silently fall back to localhost if staging is unreachable.
+
+If `${overlay}/verify-supplements.md` exists, also load project-specific smoke tests it lists.
 
 ---
 
@@ -27,8 +29,8 @@ For each user flow to verify:
 3. **Execute** the flow step-by-step using `browser_click`, `browser_type`, `browser_fill_form`
 4. **Screenshot** after each critical step
 5. **Console check** via `browser_console_messages` — any error-level message is a FAIL
-6. **Network check** via `browser_network_requests` — any 4xx/5xx is a FAIL
-7. **Compare** observed outcome against acceptance criteria from the PRD
+6. **Network check** via `browser_network_requests` — any 4xx/5xx on critical XHR is a FAIL
+7. **Compare** observed outcome against acceptance criteria from the PRD/plan
 
 ---
 
@@ -48,12 +50,14 @@ For each user flow to verify:
 
 ## Mandatory Checks (every verification run)
 
-- [ ] Dark mode toggle works correctly on the touched surface
+- [ ] Dark mode toggle works on the touched surface (skip if dark mode out of scope)
 - [ ] Responsive layout at 375px (mobile) and 1280px (desktop) via `browser_resize`
 - [ ] No hardcoded hex colors in computed styles (grep source files touched this session)
-- [ ] Clerk auth flows redirect correctly (unauthenticated → sign-in, authenticated → app)
+- [ ] Auth flows redirect correctly (unauthenticated → sign-in, authenticated → app) — provider-agnostic
 - [ ] Loading states render before data arrives (skeleton / spinner visible at first paint)
 - [ ] Empty states render when collections are empty
+
+Project-specific mandatory checks live in `${overlay}/verify-supplements.md` when present (e.g., webhook idempotency curl, RLS anon deny, public-list privacy).
 
 ---
 
@@ -69,9 +73,9 @@ For each user flow to verify:
 ## What This Agent Does NOT Do
 
 - Write or modify code — verification only
-- Approve commits — that is the commit protocol's job (`.claude/docs/quality-gates.md § Commit Agent Protocol`)
-- Run unit/integration tests — those belong to Vitest (`bun run test`)
-- Deploy — that is out of scope
+- Approve commits — that is the commit protocol's job
+- Run unit/integration tests — those belong to the project's test runner (`${tooling.testRunner}`)
+- Deploy — out of scope
 
 ---
 

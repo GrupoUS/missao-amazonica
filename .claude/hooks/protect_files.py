@@ -1,35 +1,84 @@
 #!/usr/bin/env python3
 """protect_files.py - Block modifications to sensitive files.
 Trigger: PreToolUse (Edit|Write)
+
+Generic defaults block .env, lockfiles, and .git/ directory.
+Project-specific protected paths read from .claude/config.json::protectedFiles
+(extends each list) or from ${overlay}/protected-files.json if present.
 """
 import json
+import os
 import sys
 import typing
 
-from pathlib import PurePath
+from pathlib import Path, PurePath
 
-# Exact filename matches — prevent false positives from substring matching
-# e.g. ".env" should not block "environment.ts"
-PROTECTED_EXACT = {
+# Generic exact filename matches — apply to every project
+PROTECTED_EXACT_DEFAULT = {
     ".env",
     ".env.local",
     ".env.production",
     ".env.development",
+    ".env.test",
     "bun.lockb",
     "bun.lock",
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
 }
 
-# Path segment patterns — matched against individual path components only,
-# so "credentials" blocks "credentials/secret.json" but NOT "credentials-form.tsx"
-PROTECTED_SEGMENTS = {"credentials", "secrets", "api-keys"}
+# Generic path segment matches — block any directory named these
+PROTECTED_SEGMENTS_DEFAULT = {"credentials", "secrets", "api-keys"}
 
-# Directory/path containment — patterns with separators are safe for substring
-# matching (e.g. ".git/" is distinct from ".github/")
-PROTECTED_CONTAINS = [
+# Generic directory containment — patterns with separators
+PROTECTED_CONTAINS_DEFAULT = [
     ".git/",
     ".git\\",
-    "drizzle/migrations/",
 ]
+
+
+def load_extra_protections() -> tuple[set[str], set[str], list[str]]:
+    """Read .claude/config.json::protectedFiles and ${overlay}/protected-files.json
+    to extend the generic protections. Returns (exact, segments, contains).
+    Each project can add stack-specific protected paths (e.g. migration dirs).
+    """
+    extra_exact: set[str] = set()
+    extra_segments: set[str] = set()
+    extra_contains: list[str] = []
+
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    config_path = Path(project_dir) / ".claude" / "config.json"
+
+    overlay_path: str | None = None
+    if config_path.is_file():
+        try:
+            cfg = json.loads(config_path.read_text(errors="replace"))
+            pf = cfg.get("protectedFiles", {}) or {}
+            extra_exact.update(pf.get("exact", []) or [])
+            extra_segments.update(pf.get("segments", []) or [])
+            extra_contains.extend(pf.get("contains", []) or [])
+            overlay_path = cfg.get("overlay") or None
+        except Exception:
+            pass
+
+    if overlay_path:
+        overlay_file = Path(project_dir) / overlay_path / "protected-files.json"
+        if overlay_file.is_file():
+            try:
+                ov = json.loads(overlay_file.read_text(errors="replace"))
+                extra_exact.update(ov.get("exact", []) or [])
+                extra_segments.update(ov.get("segments", []) or [])
+                extra_contains.extend(ov.get("contains", []) or [])
+            except Exception:
+                pass
+
+    return extra_exact, extra_segments, extra_contains
+
+
+_extra_exact, _extra_segments, _extra_contains = load_extra_protections()
+PROTECTED_EXACT = PROTECTED_EXACT_DEFAULT | _extra_exact
+PROTECTED_SEGMENTS = PROTECTED_SEGMENTS_DEFAULT | _extra_segments
+PROTECTED_CONTAINS = PROTECTED_CONTAINS_DEFAULT + _extra_contains
 
 
 def read_input() -> dict[str, object]:

@@ -31,15 +31,16 @@ python -c "import crawl4ai; print('ok')"
 
 ```bash
 # Check for existing relevant notebook
-nlm list | grep -i "neondash\|planning"
+nlm list | grep -i "<your-project>\|planning"
 
-# Create if needed
-NB=$(nlm create "neondash-$(date +%Y-%m-%d)" --json | jq -r '.id')
+# Create if needed (uses project name from .claude/config.json)
+NB=$(nlm create "${project.name}-$(date +%Y-%m-%d)" --json | jq -r '.id')
 nlm alias set planning-session "$NB"
 
-# Add project context
-nlm add url "https://github.com/GrupoUS/neondash" --wait
-nlm add file .claude/docs/architecture/README.md --wait
+# Add project context (replace with your repo URL)
+nlm add url "https://github.com/<your-org>/<your-repo>" --wait
+# If your project has architecture/README docs, add them too
+[ -f .claude/docs/architecture/README.md ] && nlm add file .claude/docs/architecture/README.md --wait
 ```
 
 ### Research Aggregation (Phase 1)

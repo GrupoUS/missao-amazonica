@@ -1,24 +1,32 @@
 #!/usr/bin/env node
 /**
- * CDP Tool — Unified Chrome DevTools Protocol client for NeonDash debugging.
- * Runs on the WINDOWS side via PowerShell to avoid WSL→Windows WebSocket issues.
+ * CDP Tool — Unified Chrome DevTools Protocol client for browser-based debugging.
+ * Runs on the host side (Windows / macOS / Linux). On Windows from WSL, route via PowerShell.
  *
- * Usage (from WSL):
- *   /mnt/c/WINDOWS/System32/WindowsPowerShell/v1.0/powershell.exe -NoProfile -Command \
- *     "cd C:\Users\Mauri; node cdp-tool.js <command> [args...]"
+ * Usage:
+ *   node cdp-tool.js <command> [args...]
  *
  * Commands:
- *   navigate <url>                  Navigate to URL and wait 5s
+ *   navigate <url> [waitMs]         Navigate to URL and wait
  *   screenshot <output-path>        Capture PNG screenshot
  *   analyze                         Return page metrics (dead anchors, empty buttons, etc.)
  *   eval <expression>               Evaluate JS expression and return result
  *   info                            Return current URL + title
- *   cookies                         Export neondash/clerk cookies as JSON
+ *   cookies                         Export cookies for the configured domain(s) as JSON
+ *
+ * Page selection:
+ *   By default, finds a page whose URL matches the host of project.stagingUrl
+ *   from .claude/config.json. Override with $CDP_URL_MATCH env var.
+ *
+ * Cookie domains:
+ *   Defaults to project.stagingUrl + project.productionUrl from config.json.
+ *   Override with $CDP_COOKIE_URLS (comma-separated).
  */
 
 const http = require("node:http");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const path = require("node:path");
 
 function writeStdout(value) {
   process.stdout.write(`${value}\n`);
@@ -32,6 +40,42 @@ function exitWithError(message) {
   writeStderr(message);
   process.exit(1);
 }
+
+function loadConfig() {
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const configPath = path.join(projectDir, ".claude", "config.json");
+  try {
+    if (fs.existsSync(configPath)) {
+      return JSON.parse(fs.readFileSync(configPath, "utf8"));
+    }
+  } catch (_) {}
+  return {};
+}
+
+const CONFIG = loadConfig();
+const PROJECT = CONFIG.project || {};
+
+function getUrlMatch() {
+  if (process.env.CDP_URL_MATCH) return process.env.CDP_URL_MATCH;
+  try {
+    const u = (PROJECT.stagingUrl || "").trim();
+    if (u) return new URL(u).hostname || u;
+  } catch (_) {}
+  return "";
+}
+
+function getCookieUrls() {
+  if (process.env.CDP_COOKIE_URLS) {
+    return process.env.CDP_COOKIE_URLS.split(",").map((s) => s.trim()).filter(Boolean);
+  }
+  const urls = [];
+  if (PROJECT.stagingUrl) urls.push(PROJECT.stagingUrl);
+  if (PROJECT.productionUrl) urls.push(PROJECT.productionUrl);
+  return urls;
+}
+
+const URL_MATCH = getUrlMatch();
+const COOKIE_URLS = getCookieUrls();
 
 const CDP_PORT = process.env.CDP_PORT || 9222;
 const COMMAND = process.argv[2];
@@ -146,7 +190,13 @@ async function getPageTarget() {
       })
       .on("error", reject);
   });
-  return list.find((t) => t.type === "page" && t.url.includes("neondash"));
+  return list.find((t) => {
+    if (t.type !== "page") return false;
+    const url = t.url || "";
+    if (url.startsWith("chrome-extension://") || url.startsWith("chrome://") || url.startsWith("devtools://")) return false;
+    if (!URL_MATCH) return true;
+    return url.includes(URL_MATCH);
+  });
 }
 
 // --- Commands ---
@@ -154,7 +204,7 @@ async function getPageTarget() {
 async function cmdNavigate(url) {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   const socket = await wsConnect(page.webSocketDebuggerUrl);
   await sendAndReceive(socket, { id: 1, method: "Page.navigate", params: { url } });
@@ -178,7 +228,7 @@ async function cmdNavigate(url) {
 async function cmdScreenshot(outputPath) {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   const socket = await wsConnect(page.webSocketDebuggerUrl);
   const result = await sendAndReceive(socket, {
@@ -198,7 +248,7 @@ async function cmdScreenshot(outputPath) {
 async function cmdAnalyze() {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   const socket = await wsConnect(page.webSocketDebuggerUrl);
   const r = await sendAndReceive(socket, {
@@ -227,7 +277,7 @@ async function cmdAnalyze() {
 async function cmdEval(expression) {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   const socket = await wsConnect(page.webSocketDebuggerUrl);
   const r = await sendAndReceive(socket, {
@@ -242,7 +292,7 @@ async function cmdEval(expression) {
 async function cmdInfo() {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   writeStdout(`URL: ${page.url}`);
   writeStdout(`Title: ${page.title}`);
@@ -251,7 +301,7 @@ async function cmdInfo() {
 async function cmdCookies() {
   const page = await getPageTarget();
   if (!page) {
-    exitWithError("No neondash page found");
+    exitWithError(`No matching page found in CDP (match: '${URL_MATCH || "any"}')`);
   }
   const socket = await wsConnect(page.webSocketDebuggerUrl);
   await sendAndReceive(socket, { id: 1, method: "Network.enable" });
@@ -259,7 +309,7 @@ async function cmdCookies() {
     id: 2,
     method: "Network.getCookies",
     params: {
-      urls: ["https://staging.neondash.com.br", "https://accounts.neondash.com.br"],
+      urls: COOKIE_URLS,
     },
   });
   const cookies = r?.result?.cookies || [];

@@ -7,10 +7,24 @@
     "allow": [
       "Bash(bun *)",
       "Bash(bunx *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(pnpm *)",
+      "Bash(yarn *)",
       "Bash(git *)",
+      "Bash(gh *)",
       "Bash(docker *)",
       "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(node *)",
+      "Bash(deno *)",
+      "Bash(tsc *)",
       "Bash(tsgo *)",
+      "Bash(curl *)",
+      "Bash(wc *)",
+      "Bash(awk *)",
+      "Bash(tail *)",
+      "Bash(test *)",
       "Read(**/*.json)",
       "Read(**/*.js)",
       "Read(**/*.ts)",
@@ -29,11 +43,14 @@
       "Write(**/*.ts)",
       "Write(**/*.tsx)",
       "Write(**/*.py)",
-      "Write(**/*.md)",
-      "Bash(curl *)",
-      "Bash(wc *)"
+      "Write(**/*.md)"
     ],
-    "deny": ["Read(./.env*)", "Read(./secrets/**)", "Bash(rm -rf *)", "Bash(sudo *)"]
+    "deny": [
+      "Read(./.env*)",
+      "Read(./secrets/**)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)"
+    ]
   },
   "enableAllProjectMcpServers": true,
   "enabledPlugins": {
@@ -54,43 +71,6 @@
             "command": "python \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_context.py",
             "timeout": 15,
             "statusMessage": "Loading AGENTS.md + project context..."
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --directory \"$CLAUDE_PROJECT_DIR/claude-memory-compiler\" python hooks/session-start.py",
-            "timeout": 15,
-            "statusMessage": "Injecting knowledge base context..."
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --directory \"$CLAUDE_PROJECT_DIR/claude-memory-compiler\" python hooks/pre-compact.py",
-            "timeout": 10,
-            "statusMessage": "Capturing context before compaction..."
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "uv run --directory \"$CLAUDE_PROJECT_DIR/claude-memory-compiler\" python hooks/session-end.py",
-            "timeout": 10,
-            "statusMessage": "Extracting session knowledge..."
           }
         ]
       }
@@ -129,7 +109,7 @@
     ],
     "PermissionRequest": [
       {
-        "matcher": "Read|Grep|Glob|Bash|Edit|Write|mcp__plugin_serena_serena__.*|mcp__tavily__.*|mcp__sequential-thinking__.*|mcp__stitch__.*|mcp__playwright__.*|mcp__claude_ai_Context7__.*|mcp__notebooklm__.*",
+        "matcher": "Read|Grep|Glob|Bash|Edit|Write|mcp__plugin_serena_serena__.*|mcp__tavily__.*|mcp__sequential-thinking__.*|mcp__stitch__.*|mcp__playwright__.*|mcp__claude_ai_Context7__.*",
         "hooks": [
           {
             "type": "command",
@@ -187,7 +167,7 @@
     ],
     "SubagentStart": [
       {
-        "matcher": "debugger|evaluator|explorer-agent|explorer|frontend-specialist|librarian|mobile-developer|performance-optimizer|project-planner",
+        "matcher": "debugger|evaluator|explorer-agent|explorer|frontend-specialist|librarian|mobile-developer|performance-optimizer|project-planner|verification",
         "hooks": [
           {
             "type": "command",

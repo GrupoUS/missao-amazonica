@@ -12,7 +12,7 @@ npx -y react-doctor@latest . --yes --verbose
 npx -y react-doctor@latest . --yes --score
 
 # Monorepo: target a specific workspace package
-npx -y react-doctor@latest . --yes --project @neondash/web --verbose
+npx -y react-doctor@latest . --yes --project @<your-org>/<workspace-name> --verbose
 
 # Auto-fix assistant mode (review all changes before keeping)
 npx -y react-doctor@latest . --yes --fix
@@ -30,7 +30,7 @@ After each batch of fixes, validate:
 
 ```bash
 npx -y react-doctor@latest . --yes --score
-bun run type-check && bun run lint:oxlint:check && bun run test
+${tooling.packageManager} run ${tooling.typeChecker} && ${tooling.packageManager} run lint && ${tooling.packageManager} run test
 ```
 
 ## Common React Doctor Fixes

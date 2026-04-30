@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import vercel from '@astrojs/vercel';
+import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import sentry from '@sentry/astro';
 
@@ -16,6 +17,9 @@ export default defineConfig({
   }),
   integrations: [
     react(),
+    sitemap({
+      filter: (page) => !page.includes('/admin') && !page.includes('/api'),
+    }),
     ...(SENTRY_DSN
       ? [
           sentry({

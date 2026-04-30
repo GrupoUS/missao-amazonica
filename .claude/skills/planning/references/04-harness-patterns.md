@@ -74,22 +74,22 @@ For lower complexity, use a 3-line version:
 **Sprint N:** [Name] — builds [X], verified by `[command]`, excludes [Y].
 ```
 
-### Worked Example (NeonDash — Drizzle Schema Sprint)
+### Worked Example (Database Schema Sprint — generic)
 
 ```markdown
 ### Sprint Contract: Sprint 1 — Database Schema
 
 **Deliverables:**
-- [ ] `apps/api/drizzle/schema.ts` — add `notificacoes` table with FK to `users`
-- [ ] `apps/api/drizzle/0005_notificacoes.sql` — migration file
+- [ ] `${paths.schemaRoot}/<schema-file>` — add `notifications` table with FK to `users`
+- [ ] `${paths.schemaRoot}/0005_notifications.sql` — migration file
 
 **Acceptance Criteria:**
-- [ ] `bun run db:push` completes without errors
-- [ ] `bun run type-check` reports 0 errors
-- [ ] FK index exists on `notificacoes.user_id`
+- [ ] `${tooling.packageManager} run db:push` (or framework migration command) completes without errors
+- [ ] `${tooling.packageManager} run ${tooling.typeChecker}` reports 0 errors
+- [ ] FK index exists on `notifications.user_id`
 - [ ] Edge case: duplicate notification insert rejected by unique constraint
 
-**Done Definition:** `bun run type-check && bun run db:push`
+**Done Definition:** type-check + apply migration both pass
 
 **Boundary (NOT in Sprint 1):**
 - Notification delivery logic — Sprint 2

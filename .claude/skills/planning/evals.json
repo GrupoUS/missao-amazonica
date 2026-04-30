@@ -111,7 +111,7 @@
   "test_cases": [
     {
       "id": "T01",
-      "input": "I want to add a new patient billing module to NeonDash. How should we plan this?",
+      "input": "I want to add a new patient billing module. How should we plan this?",
       "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A08"]
     },
     {
@@ -131,7 +131,7 @@
     },
     {
       "id": "T05",
-      "input": "Quick, I need to add a simple CSV export button to the /financeiro page. Just do it, no need to plan.",
+      "input": "Quick, I need to add a simple CSV export button to the financial summary page. Just do it, no need to plan.",
       "expected_assertions": ["A01", "A02", "A03", "A05"]
     },
     {

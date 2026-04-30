@@ -2,6 +2,9 @@
 import PublicLayout from '@/layouts/PublicLayout.astro';
 import Card from '@/components/ui/Card.astro';
 import Icon from '@/components/ui/Icon.astro';
+import Reveal from '@/components/ui/Reveal.astro';
+import Spotlight from '@/components/ui/Spotlight.astro';
+import AnimatedNumber from '@/components/ui/AnimatedNumber.tsx';
 import ItemCard from '@/components/donation/ItemCard.astro';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { formatBRL } from '@/lib/format/currency';
@@ -9,29 +12,36 @@ import { asUrgency } from '@/lib/supabase/aliases';
 
 export const prerender = false;
 
+// Service-role client is used here ONLY because (a) generic-type inference on
+// the per-request server client (`Astro.locals.supabase`) regresses to `never`
+// in the current `@supabase/ssr` deprecated overload chain, and (b) every
+// query below targets PII-free surfaces only:
+//   - `landing_stats` (aggregate view, security_invoker = on)
+//   - `donation_items` filtered to `status = 'published'` (no donor data)
+//   - `item_progress` (aggregate view)
+// No `donor_email`, `donor_phone`, or `donation_intents` row reaches this page.
+// TODO: switch to anon RLS when @supabase/ssr typing is fixed upstream.
 const admin = getSupabaseAdmin();
 
-// Stats
-const { data: stats } = await admin
-  .from('landing_stats')
-  .select('total_raised_cents, projects_active, items_completed, reserve_cents, missions_active')
-  .maybeSingle();
-
-// Urgent items (3 most recent published, sorted by urgency desc + sort_order)
-const { data: urgentItemsRaw } = await admin
-  .from('donation_items')
-  .select(`
-    id, slug, title, description, image_url, urgency, target_amount_cents, sort_order,
-    categories(name, slug)
-  `)
-  .eq('status', 'published')
-  .order('urgency', { ascending: false })
-  .order('sort_order', { ascending: true })
-  .limit(3);
+const [{ data: stats }, { data: urgentItemsRaw }] = await Promise.all([
+  admin
+    .from('landing_stats')
+    .select('total_raised_cents, projects_active, items_completed, reserve_cents, missions_active')
+    .maybeSingle(),
+  admin
+    .from('donation_items')
+    .select(`
+      id, slug, title, description, image_url, urgency, target_amount_cents, sort_order,
+      categories(name, slug)
+    `)
+    .eq('status', 'published')
+    .order('urgency', { ascending: false })
+    .order('sort_order', { ascending: true })
+    .limit(3),
+]);
 
 const urgentItems = urgentItemsRaw ?? [];
 
-// Compute confirmed totals for those items
 const itemIds = urgentItems.map((i) => i.id);
 const { data: progress } = await admin
   .from('item_progress')
@@ -54,45 +64,70 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
   activeNav="missao"
 >
   <!-- Hero -->
-  <section class="relative h-[640px] flex items-center justify-center overflow-hidden">
+  <section class="relative min-h-[640px] flex items-center overflow-hidden">
     <div class="absolute inset-0 z-0 bg-gradient-to-br from-primary via-primary-container to-secondary"></div>
     <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-background/30"></div>
     <div class="absolute right-0 top-0 bottom-0 w-1/2 hidden lg:block opacity-30 z-0">
       <div class="w-full h-full bg-gradient-to-bl from-secondary-container/40 via-transparent to-transparent"></div>
     </div>
+    <Spotlight />
 
-    <div class="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 flex flex-col items-start text-left">
-      <span class="inline-flex items-center gap-2 py-1 px-3 rounded-full bg-surface-container-lowest text-on-surface-variant type-label mb-lg shadow-card border border-outline-variant/30">
-        <Icon name="eco" size={14} class="text-secondary" />
-        Missão Sal da Terra · Abril/2026
-      </span>
-      <h1 class="font-display type-h1 text-on-background max-w-3xl mb-lg leading-tight">
-        Transformando vidas nas margens do Rio Negro.
-      </h1>
-      <p class="type-body-lg text-on-surface-variant max-w-2xl mb-xl">
-        Levando esperança, saúde e a palavra através de ações concretas
-        e transparentes nas comunidades ribeirinhas mais isoladas da Amazônia.
-      </p>
-      <div class="flex flex-wrap gap-md">
-        <a
-          href="/doar"
-          class="bg-primary-container text-on-primary px-8 py-3 rounded-lg type-label shadow-cta hover:opacity-90 transition-all inline-flex items-center gap-2"
-        >
-          Contribuir com a missão
-          <Icon name="arrow_forward" size={16} />
-        </a>
-        <a
-          href="/prestacao-de-contas"
-          class="border border-secondary text-secondary px-8 py-3 rounded-lg type-label hover:bg-surface-container-low transition-all inline-flex items-center gap-2"
-        >
-          Ver prestação de contas
-        </a>
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-xl items-center py-xxl">
+      <div class="lg:col-span-7 flex flex-col items-start text-left">
+        <Reveal>
+          <span class="inline-flex items-center gap-2 py-1 px-3 rounded-full bg-surface-container-lowest text-on-surface-variant type-label mb-lg shadow-card border border-outline-variant/30">
+            <Icon name="eco" size={14} class="text-secondary" />
+            Missão Sal da Terra · Abril/2026
+          </span>
+        </Reveal>
+        <Reveal delay={120}>
+          <h1 class="font-display type-h1 text-on-background max-w-3xl mb-lg leading-tight">
+            Transformando vidas nas margens do Rio Negro.
+          </h1>
+        </Reveal>
+        <Reveal delay={220}>
+          <p class="type-body-lg text-on-surface-variant max-w-2xl mb-xl">
+            Levando esperança, saúde e a palavra através de ações concretas
+            e transparentes nas comunidades ribeirinhas mais isoladas da Amazônia.
+          </p>
+        </Reveal>
+        <Reveal delay={320}>
+          <div class="flex flex-wrap gap-md">
+            <a
+              href="/doar"
+              class="bg-primary-container text-on-primary px-8 py-3 rounded-lg type-label shadow-cta hover:opacity-90 transition-all inline-flex items-center gap-2"
+            >
+              Contribuir com a missão
+              <Icon name="arrow_forward" size={16} />
+            </a>
+            <a
+              href="/prestacao-de-contas"
+              class="border border-secondary text-secondary px-8 py-3 rounded-lg type-label hover:bg-surface-container-low transition-all inline-flex items-center gap-2"
+            >
+              Ver prestação de contas
+            </a>
+          </div>
+        </Reveal>
       </div>
+      <Reveal delay={420} class="lg:col-span-5 hidden lg:block">
+        <div class="relative aspect-[4/3]">
+          <div class="absolute inset-0 bg-secondary/15 translate-x-3 translate-y-3 rounded-3xl"></div>
+          <div class="relative w-full h-full rounded-3xl overflow-hidden bg-gradient-to-br from-primary via-secondary to-primary-container border border-outline-variant/20 flex items-center justify-center text-on-primary">
+            <div class="text-center px-md">
+              <Icon name="forest" size={64} class="mx-auto mb-md opacity-80" />
+              <p class="font-display text-2xl mb-2">Rio Negro · AM</p>
+              <p class="type-body opacity-80 max-w-xs mx-auto">
+                Comunidades ribeirinhas atendidas todo mês de abril.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Reveal>
     </div>
   </section>
 
   <!-- Trust Bar -->
-  <section class="bg-surface-container-lowest border-y border-outline-variant/30 py-md">
+  <Reveal as="section" class="bg-surface-container-lowest border-y border-outline-variant/30 py-md">
     <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap justify-between items-center gap-lg">
       <div class="flex items-center gap-sm text-on-surface-variant type-body">
         <Icon name="verified" size={20} class="text-secondary" />
@@ -107,7 +142,7 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
         <span>Auditoria Independente</span>
       </div>
     </div>
-  </section>
+  </Reveal>
 
   <!-- Nossa Missão -->
   <section id="missao" class="py-huge bg-background">
@@ -172,33 +207,57 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
   <!-- Impacto em Números -->
   <section id="impacto" class="py-huge bg-surface-container-low">
     <div class="max-w-7xl mx-auto px-6 lg:px-8">
-      <div class="text-center mb-xl">
+      <Reveal class="text-center mb-xl">
         <h2 class="font-display type-h2 text-on-background mb-sm">Impacto em Números</h2>
         <p class="type-body text-on-surface-variant max-w-2xl mx-auto">
           Resultados mensuráveis do nosso compromisso com as comunidades ribeirinhas.
         </p>
-      </div>
+      </Reveal>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
-        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
-          <span class="text-primary-container mb-sm"><Icon name="payments" size={40} /></span>
-          <p class="font-display type-h2 text-on-surface mb-xs">{formatBRL(totalRaised, { compact: true })}</p>
-          <p class="type-label text-on-surface-variant">Arrecadado</p>
-        </Card>
-        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
-          <span class="text-primary-container mb-sm"><Icon name="forest" size={40} /></span>
-          <p class="font-display type-h2 text-on-surface mb-xs">{projectsActive}</p>
-          <p class="type-label text-on-surface-variant">Projetos Ativos</p>
-        </Card>
-        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
-          <span class="text-primary-container mb-sm"><Icon name="check_circle" size={40} /></span>
-          <p class="font-display type-h2 text-on-surface mb-xs">{itemsCompleted}</p>
-          <p class="type-label text-on-surface-variant">Concluídos</p>
-        </Card>
-        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
-          <span class="text-primary-container mb-sm"><Icon name="savings" size={40} /></span>
-          <p class="font-display type-h2 text-on-surface mb-xs">{formatBRL(reserveCents, { compact: true })}</p>
-          <p class="type-label text-on-surface-variant">Reserva Global</p>
-        </Card>
+        <Reveal delay={0}>
+          <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center h-full">
+            <span class="text-primary-container mb-sm"><Icon name="payments" size={40} /></span>
+            <p class="font-display type-h2 text-on-surface mb-xs">
+              <AnimatedNumber
+                value={totalRaised}
+                format={(n: number) => formatBRL(n, { compact: true })}
+                client:visible
+              />
+            </p>
+            <p class="type-label text-on-surface-variant">Arrecadado</p>
+          </Card>
+        </Reveal>
+        <Reveal delay={120}>
+          <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center h-full">
+            <span class="text-primary-container mb-sm"><Icon name="forest" size={40} /></span>
+            <p class="font-display type-h2 text-on-surface mb-xs">
+              <AnimatedNumber value={projectsActive} client:visible />
+            </p>
+            <p class="type-label text-on-surface-variant">Projetos Ativos</p>
+          </Card>
+        </Reveal>
+        <Reveal delay={240}>
+          <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center h-full">
+            <span class="text-primary-container mb-sm"><Icon name="check_circle" size={40} /></span>
+            <p class="font-display type-h2 text-on-surface mb-xs">
+              <AnimatedNumber value={itemsCompleted} client:visible />
+            </p>
+            <p class="type-label text-on-surface-variant">Concluídos</p>
+          </Card>
+        </Reveal>
+        <Reveal delay={360}>
+          <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center h-full">
+            <span class="text-primary-container mb-sm"><Icon name="savings" size={40} /></span>
+            <p class="font-display type-h2 text-on-surface mb-xs">
+              <AnimatedNumber
+                value={reserveCents}
+                format={(n: number) => formatBRL(n, { compact: true })}
+                client:visible
+              />
+            </p>
+            <p class="type-label text-on-surface-variant">Reserva Global</p>
+          </Card>
+        </Reveal>
       </div>
     </div>
   </section>
@@ -226,17 +285,19 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
         </p>
       ) : (
         <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
-          {urgentItems.map((item) => (
-            <ItemCard
-              slug={item.slug}
-              title={item.title}
-              description={item.description}
-              imageUrl={item.image_url}
-              urgency={asUrgency(item.urgency)}
-              categoryName={item.categories?.name}
-              targetCents={item.target_amount_cents}
-              confirmedCents={confirmedMap.get(item.id) ?? 0}
-            />
+          {urgentItems.map((item, i) => (
+            <Reveal delay={i * 120}>
+              <ItemCard
+                slug={item.slug}
+                title={item.title}
+                description={item.description}
+                imageUrl={item.image_url}
+                urgency={asUrgency(item.urgency)}
+                categoryName={item.categories?.name}
+                targetCents={item.target_amount_cents}
+                confirmedCents={confirmedMap.get(item.id) ?? 0}
+              />
+            </Reveal>
           ))}
         </div>
       )}

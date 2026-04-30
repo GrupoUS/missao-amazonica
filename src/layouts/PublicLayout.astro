@@ -1,6 +1,8 @@
 ---
 import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
+import ThemeToggle from '@/components/ui/ThemeToggle.tsx';
+import { Toaster } from '@/components/ui/sonner.tsx';
 
 interface Props {
   title?: string;
@@ -31,6 +33,20 @@ const year = new Date().getFullYear();
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    {/* Apply theme class before first paint to prevent FOUC. Must run before stylesheet loads. */}
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('salda-theme') || 'system';
+          var resolved = stored === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : stored;
+          if (resolved === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -40,7 +56,7 @@ const year = new Date().getFullYear();
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&display=swap"
     />
 
     <meta property="og:type" content="website" />
@@ -51,12 +67,38 @@ const year = new Date().getFullYear();
     {ogImage && <meta property="og:image" content={ogImage} />}
     <meta name="twitter:card" content="summary_large_image" />
 
-    <meta name="theme-color" content="#012d1d" />
+    <meta name="theme-color" content="#012d1d" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1411" media="(prefers-color-scheme: dark)" />
+
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+    {/* Organization JSON-LD for SEO + GEO citation readiness */}
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'NGO',
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: `${SITE_URL}/og-default.png`,
+      description: 'Plataforma de doações da Missão Amazônica – Sal da Terra. Atuamos nas comunidades ribeirinhas do Rio Negro com transparência total.',
+      areaServed: {
+        '@type': 'Place',
+        name: 'Rio Negro, Amazonas, Brasil',
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        contactType: 'customer service',
+        email: 'contato@missaoamazonica.org',
+        availableLanguage: ['Portuguese'],
+      },
+    })} />
   </head>
   <body class="bg-background text-on-background antialiased min-h-screen flex flex-col">
     <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
 
-    <header class="bg-[#faf6f0] border-b border-primary-container/10 sticky top-0 z-40 backdrop-blur-sm">
+    <header class="bg-surface-container-lowest border-b border-outline-variant/30 sticky top-0 z-40 backdrop-blur-sm">
       <div class="flex justify-between items-center px-6 h-16 w-full max-w-7xl mx-auto">
         <a href="/" class="font-display text-xl font-bold text-primary-container flex items-center gap-2 hover:opacity-80 transition-opacity">
           <span aria-hidden="true" class="inline-flex items-center justify-center size-8 rounded-full bg-primary-container text-on-primary">
@@ -104,7 +146,7 @@ const year = new Date().getFullYear();
           >Impacto</a>
         </nav>
 
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
           <a
             href="/doar"
             class="bg-primary-container text-on-primary px-4 py-2 rounded-lg type-label hover:opacity-90 transition-opacity shadow-cta inline-flex items-center gap-2"
@@ -112,10 +154,11 @@ const year = new Date().getFullYear();
             <Icon name="hand_heart" size={16} />
             Contribuir
           </a>
+          <ThemeToggle client:idle />
           <a
             href="/admin/login"
             aria-label="Área administrativa"
-            class="text-primary-container hover:bg-surface-container-low p-2 rounded-full transition-colors hidden sm:inline-flex items-center justify-center"
+            class="text-on-surface-variant hover:bg-surface-container-low hover:text-primary-container p-2 rounded-full transition-colors hidden sm:inline-flex items-center justify-center"
           >
             <Icon name="account_circle" size={20} />
           </a>
@@ -166,9 +209,34 @@ const year = new Date().getFullYear();
       </div>
     </footer>
 
+    <Toaster client:idle position="bottom-right" richColors closeButton />
+
+    {/* Reveal-on-scroll: add `is-visible` to `.reveal` elements once they intersect. */}
+    <script is:inline>
+      (function () {
+        if (!('IntersectionObserver' in window)) {
+          document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+          return;
+        }
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+          return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
+      })();
+    </script>
+
     <noscript>
       <style>
-        [data-reveal] {
+        .reveal {
           opacity: 1 !important;
           transform: none !important;
         }

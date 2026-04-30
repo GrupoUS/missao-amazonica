@@ -1,392 +1,364 @@
 ---
-description: "Performance audits and build optimization. Runtime: PSI API (mobile/desktop), multi-route, site-wide, auto-fix, compare. Build: bundle analysis, caching, code splitting, Vite/TypeScript/Bun optimizations. Database: pool audit, N+1 scan, SELECT * scan, index gap check, prepared statement candidates. Pass URL, strategy (mobile/desktop), mode (routes/all/fix/compare/build/db), or combine."
+description: Performance audits + optimization. Modes (positional arg) — default: runtime audit (PSI/Lighthouse) · build: bundle analysis, code splitting, build-tool tuning · db: pool audit, N+1 scan, index gaps, prepared-statement candidates. Pass URL/scope/strategy after the mode token.
 workflow_type: orchestrator-workers
 ---
 
-# /perf — Performance & Build Optimization
+# /perf — Performance & Optimization
 
 **ARGUMENTS**: $ARGUMENTS
 
-> **Runtime audits:** Google PageSpeed Insights v5 (zero-dependency, no Chrome needed)
-> **Build optimization:** Vite 7 + Bun + TypeScript (tsgo) — project-specific
-> **Agent:** `performance-optimizer`
-> **Skill:** `performance-optimization`
+> First positional arg = mode. Examples:
+> ```
+> /perf                            # default — runtime audit (PSI/Lighthouse)
+> /perf url=https://example.com    # runtime audit on specific URL
+> /perf strategy=mobile            # runtime, mobile only
+> /perf build                      # bundle/build-tool optimization
+> /perf db                         # database performance (N+1, indexes, pool)
+> /perf compare baseline.json after.json    # compare two runs
+> ```
+> All modes use **Skill `performance-optimization`** + agent `performance-optimizer`.
 
 ---
 
-## Task
+## 0. Setup (every mode)
 
-Conduct comprehensive performance audit following these steps:
+```typescript
+Skill("performance-optimization");
+```
 
-1. **Technology Stack Analysis**
-   - Identify the primary language, framework, and runtime environment
-   - Review build tools and optimization configurations
-   - Check for performance monitoring tools already in place
+Read `.claude/config.json`:
+- `${project.stagingUrl}` → default audit target (override via `url=`)
+- `${tooling.buildTool}` → build-tool selection (vite / webpack / esbuild / rollup / turbopack / astro / next / etc.)
+- `${tooling.typeChecker}` / `${tooling.testRunner}` / `${tooling.packageManager}`
+- `${gates.lighthouse}` / `${gates.lcp}` / `${gates.cls}` / `${gates.inp}` / `${gates.initialJsKb}` → pass thresholds
 
-2. **Code Performance Analysis**
-   - Identify inefficient algorithms and data structures
-   - Look for nested loops and O(n²) operations
-   - Check for unnecessary computations and redundant operations
-   - Review memory allocation patterns and potential leaks
-
-3. **Database Performance**
-   - Analyze database queries for efficiency
-   - Check for missing indexes and slow queries
-   - Review connection pooling and database configuration
-   - Identify N+1 query problems and excessive database calls
-
-4. **Frontend Performance (if applicable)**
-   - Analyze bundle size and chunk optimization
-   - Check for unused code and dependencies
-   - Review image optimization and lazy loading
-   - Examine render performance and re-render cycles
-   - Check for memory leaks in UI components
-
-5. **Network Performance**
-   - Review API call patterns and caching strategies
-   - Check for unnecessary network requests
-   - Analyze payload sizes and compression
-   - Examine CDN usage and static asset optimization
-
-6. **Asynchronous Operations**
-   - Review async/await usage and promise handling
-   - Check for blocking operations and race conditions
-   - Analyze task queuing and background processing
-   - Identify opportunities for parallel execution
-
-7. **Memory Usage**
-   - Check for memory leaks and excessive memory consumption
-   - Review garbage collection patterns
-   - Analyze object lifecycle and cleanup
-   - Identify large objects and unnecessary data retention
-
-8. **Build & Deployment Performance**
-   - Analyze build times and optimization opportunities
-   - Review dependency bundling and tree shaking
-   - Check for development vs production optimizations
-   - Examine deployment pipeline efficiency
-
-9. **Performance Monitoring**
-   - Check existing performance metrics and monitoring
-   - Identify key performance indicators (KPIs) to track
-   - Review alerting and performance thresholds
-   - Suggest performance testing strategies
-
-10. **Benchmarking & Profiling**
-    - Run performance profiling tools appropriate for the stack
-    - Create benchmarks for critical code paths
-    - Measure before and after optimization impact
-    - Document performance baselines
-
-11. **Optimization Recommendations**
-    - Prioritize optimizations by impact and effort
-    - Provide specific code examples and alternatives
-    - Suggest architectural improvements for scalability
-    - Recommend appropriate performance tools and libraries
-
-Include specific file paths, line numbers, and measurable metrics where possible. Focus on high-impact, low-effort optimizations first.
+If `${overlay}` exists, also load `${overlay}/seo-supplement.md` (project-specific SEO/route specifics).
 
 ---
 
+## 1. Mode dispatch
 
-### Measurement Tool Selection
+Parse first positional token from `$ARGUMENTS`:
+
+| Token | Section |
+|---|---|
+| (none) / `runtime` / `routes` / `all` | § 2 (runtime audit) |
+| `fix` | § 2 + auto-fix loop (§ 2.5) |
+| `compare` | § 2.6 (compare two PSI runs) |
+| `build` / `bundle` | § 3 (build/bundle optimization) |
+| `db` / `database` | § 4 (database performance) |
+
+Other tokens after mode are kwargs (`url=`, `strategy=`, `scope=`, etc.).
+
+---
+
+## 2. Runtime audit (default mode)
+
+Google PageSpeed Insights v5 (zero-dependency). Falls back to Lighthouse CLI when quota exceeded.
+
+### 2.1 Measurement tool selection
 
 ```
 1. Try PSI API (preferred — no Chrome needed)
-2. If HTTP 429 (quota) → fall back to Lighthouse CLI:
-   bunx lighthouse URL --output=json --chrome-flags="--headless --no-sandbox --disable-gpu"
-3. For full crawl → Unlighthouse: npx unlighthouse --site URL --throttle --samples 1
+2. If HTTP 429 (quota) → Lighthouse CLI:
+   ${tooling.packageManager} dlx lighthouse URL --output=json \
+     --chrome-flags="--headless --no-sandbox --disable-gpu"
+3. For full crawl → Unlighthouse:
+   ${tooling.packageManager} dlx unlighthouse --site URL --throttle --samples 1
 ```
 
----
-
-## Default Configuration
+### 2.2 Default config
 
 ```yaml
-KEY_ROUTES: detect from router files or use user-provided list
+KEY_ROUTES: detect from router files (${PATHS_FRONTEND_ROOT}/routes/, app/, pages/) or use user-provided list
 THRESHOLDS:
-  performance:     { pass: 90, warn: 50 }
-  accessibility:   { pass: 90, warn: 70 }
-  best-practices:  { pass: 90, warn: 70 }
-  seo:             { pass: 95, warn: 80 }
-CWV_TARGETS: { LCP: 2.5s, FCP: 1.8s, CLS: 0.1, TBT: 200ms, SI: 3.4s, TTI: 3.8s }
+  performance:    { pass: ${gates.lighthouse.performance}, warn: 50 }
+  accessibility:  { pass: ${gates.lighthouse.accessibility}, warn: 70 }
+  best-practices: { pass: ${gates.lighthouse.bestPractices}, warn: 70 }
+  seo:            { pass: ${gates.lighthouse.seo}, warn: 80 }
+CWV_TARGETS:
+  LCP: ${gates.lcp}ms
+  CLS: ${gates.cls}
+  INP: ${gates.inp}ms
+  FCP: 1800ms
+  TBT: 200ms
 ```
 
----
+### 2.3 Execute
 
-Call PSI API for the URL with each selected strategy. Parse and display:
+Call PSI API for the resolved URL with each selected strategy (mobile + desktop unless overridden).
+
+### 2.4 Output
 
 ```markdown
 ## PSI Report: {URL}
 
 ### Scores ({strategy})
 | Category | Score | Status |
-|----------|-------|--------|
-| Performance | XX | PASS/WARN/FAIL |
-| Accessibility | XX | PASS/WARN/FAIL |
-| Best Practices | XX | PASS/WARN/FAIL |
-| SEO | XX | PASS/WARN/FAIL |
+|---|---|---|
+| Performance | XX | PASS / WARN / FAIL |
+| Accessibility | XX | PASS / WARN / FAIL |
+| Best Practices | XX | PASS / WARN / FAIL |
+| SEO | XX | PASS / WARN / FAIL |
 
 ### Core Web Vitals
 | Metric | Value | Target | Status |
-|--------|-------|--------|--------|
-| FCP | X.Xs | 1.8s | PASS/FAIL |
-| LCP | X.Xs | 2.5s | PASS/FAIL |
-| CLS | X.XX | 0.1  | PASS/FAIL |
-| TBT | Xms  | 200ms | PASS/FAIL |
+|---|---|---|---|
+| FCP | X.Xs | 1.8s | PASS / FAIL |
+| LCP | X.Xs | {gates.lcp}ms | PASS / FAIL |
+| CLS | X.XX | {gates.cls} | PASS / FAIL |
+| INP | Xms | {gates.inp}ms | PASS / FAIL |
+| TBT | Xms | 200ms | PASS / FAIL |
 
 ### Top Opportunities
 | Audit | Savings | Display |
-|-------|---------|---------|
+|---|---|---|
 | unused-javascript | XXXms | Est savings XXX KiB |
 ```
 
+### 2.5 Auto-fix loop (`/perf fix`)
+
+1. Measure baseline against all key routes.
+2. Identify routes with Performance < threshold.
+3. Spawn 1 `performance-optimizer` agent per failing route, all in **single message**, each with `isolation: "worktree"`.
+4. Each agent prompt includes: route-specific scores, CWV, top opportunities, failing audits, scope (which files/components), task (read frontend rules from `.claude/rules/frontend.md`, fix top 3 opportunities by `savings_ms`, run quality gates per `_shared.md` § 1, report changes).
+5. After all agents return: re-measure and verify improvements.
+
+Skip routes already at threshold.
+
+### 2.6 Compare (`/perf compare baseline.json after.json`)
+
+Load both JSON outputs. Display delta table: Δ score per category, Δ CWV per metric, regressions highlighted.
+
 ---
 
-## FIX
+## 3. Build mode — `/perf build`
 
-Automated measure → fix → validate loop.
+Generic across build tools. Detects `${tooling.buildTool}` from config + project files.
 
-### Measure Baseline
+### 3.1 Build system detection
 
-Scan all key routes (or single URL). Identify routes with Performance < 90.
+Read config + project files to confirm:
+- Build tool: `vite`, `webpack`, `rollup`, `esbuild`, `turbopack`, `astro`, `next`, `nuxt`, etc.
+- Type checker: `tsgo`, `tsc`, `swc`, `babel`
+- Bundler-specific config files (`vite.config.*`, `webpack.config.*`, `rollup.config.*`, `astro.config.*`, etc.)
+- Build scripts in `package.json`
 
-### Spawn 1 Agent Per Failing Route (Parallel)
-
-For each route with Performance < 90, spawn one `performance-optimizer` agent. All in a **single message block**. Each agent uses `isolation: "worktree"`.
-
-Each agent prompt must include:
-- Route-specific scores, CWV, top opportunities, failing audits
-- Scope: which route files and components to focus on
-- Instructions: read project frontend AGENTS.md, fix top 3 opportunities by savings_ms, run quality gates, report changes
-
-Skip routes with Performance >= 90.
-
-Optimize build performance for the Vite 7 + Bun + TypeScript (tsgo) stack.
-Follow this systematic approach: measure first, identify bottlenecks, apply targeted fixes, validate.
-
-### Step 1: Build System Analysis
-
-- Confirm build system: **Vite 7** (frontend), **Bun** (runtime + bundler), **tsgo** (type checking)
-- Read `vite.config.ts`, `tsconfig.json`, `package.json` build scripts
-- Map the complete build pipeline: `bun run build` → Vite (esbuild transform + Rollup bundle)
-- Check for custom plugins, preprocessors, and post-build steps
-
-### Step 2: Performance Baseline
-
-Measure and record before any changes:
+### 3.2 Performance baseline
 
 ```bash
-# Clean build timing
-time bun run build
+# Clean build
+time ${tooling.packageManager} run build
 
-# Incremental (cache warm) build timing
-time bun run build
+# Incremental build (cache warm)
+time ${tooling.packageManager} run build
 
-# Type check timing
-time bun run type-check
+# Type check (if separate)
+time ${tooling.packageManager} run ${tooling.typeChecker}
 
-# Output sizes
-ls -lh apps/web/dist/assets/ | sort -k5 -hr | head -20
+# Output sizes — adapt path per build tool
+ls -lh ${PATHS_FRONTEND_ROOT}/dist/assets/ 2>/dev/null \
+  || ls -lh ${PATHS_FRONTEND_ROOT}/.output/public/ 2>/dev/null \
+  || ls -lh build/ 2>/dev/null \
+  | sort -k5 -hr | head -20
 ```
 
-Document:
-- Clean build time vs incremental build time
-- Bundle sizes per chunk (JS, CSS, assets)
-- Type-check time (tsgo target: ~4s)
-- Slowest phases in the build output
+Document: clean vs incremental times, bundle sizes per chunk, type-check time, slowest phases from build log.
 
-### Step 3: Bundle Analysis
+### 3.3 Bundle analysis
 
-Run bundle visualizer to map composition:
+Run an appropriate visualizer for the build tool. Generic options:
+- Vite / Rollup: `rollup-plugin-visualizer` (or `vite-bundle-visualizer`)
+- Webpack: `webpack-bundle-analyzer`
+- esbuild: `esbuild-visualizer`
+- Generic: `source-map-explorer` on the production build
 
-```bash
-# Add temporarily to vite.config.ts, then build
-bunx rollup-plugin-visualizer   # or vite-bundle-visualizer
-bun run build
-# Open stats.html in browser
+Identify: largest chunks + top contributors, duplicate dependencies across chunks, splitting opportunities.
+
+### 3.4 Caching strategy
+
+**Dependency pre-bundling cache** (Vite `.vite/deps`, Webpack `.cache`, etc.) — verify it exists and is populated.
+**TypeScript incremental** — `tsBuildInfoFile` set, `incremental: true`.
+**CI/CD cache** — package manager cache, build-tool cache, type-checker cache, between pipeline runs.
+
+### 3.5 Code splitting & lazy loading
+
+- Route-based splitting: heavy page components lazy-loaded with `<Suspense>`/equivalent
+- Heavy deps (charts, PDF, rich-text editors, code editors) dynamically imported
+- Vendor chunks separated explicitly via `manualChunks` (or equivalent)
+- Chunk size warning limit set (default 500KB)
+
+### 3.6 Asset optimization
+
+- Images: WebP / AVIF, lazy loading, correct sizing, explicit `width`/`height` for CLS
+- CSS: framework purge active in production builds
+- Compression: gzip + brotli at server / CDN / proxy
+- Tree shaking: `sideEffects: false` for pure utility packages
+
+### 3.7 Build-tool-specific recommendations
+
+Apply patterns appropriate to the detected `${tooling.buildTool}`. Examples:
+
+```
+target: 'es2020'           # modern target = smaller output
+minify: 'esbuild'           # esbuild faster than terser
+cssMinify: true
+sourcemap: false            # disable in prod (or 'hidden')
+chunkSizeWarningLimit: 500
+optimizeDeps.include: [stable deps]
 ```
 
-Identify:
-- Largest chunks and their top contributors
-- Duplicate dependencies across chunks
-- Opportunities for further splitting
+For TypeScript-heavy projects: `skipLibCheck: true`, `moduleResolution: 'bundler'`, project references for monorepos > 200 files/package, avoid `paths` aliases that force re-resolution of full module graph.
 
-### Step 4: Caching Strategy
+### 3.8 Dev mode
 
-**Vite dependency pre-bundling:**
-- Verify `node_modules/.vite/deps` exists and is populated
-- Add rarely-changing deps to `optimizeDeps.include` in `vite.config.ts`
-- Check `optimizeDeps.exclude` is not over-broad
+- Dev transformer uses fast path (esbuild / SWC) — never Babel in dev
+- HMR / Fast Refresh active
+- Cheap source maps for fastest rebuilds
 
-**tsgo incremental compilation:**
-- Verify `tsBuildInfoFile` is set in `tsconfig.json` for incremental builds
-- Confirm `incremental: true` is set
-
-**CI/CD cache:**
-- Cache `~/.bun/install/cache` between pipeline runs
-- Cache `node_modules/.vite` for Vite dep pre-bundling
-- Cache tsgo `*.tsbuildinfo` files
-
-### Step 5: Code Splitting & Lazy Loading
-
-**Route-based splitting (TanStack Router):**
-- Verify route files use `React.lazy` + `<Suspense>` for heavy page components
-- Check that heavy deps (Recharts 200KB+, PDF libs, chart editors) are lazy-loaded
-- Confirm vendor chunks are properly separated
-
-**Vite chunk configuration** (`vite.config.ts`):
-```typescript
-build: {
-  rollupOptions: {
-    output: {
-      manualChunks: {
-        vendor: ['react', 'react-dom'],
-        router: ['@tanstack/react-router'],
-        query: ['@tanstack/react-query'],
-        // Heavy UI libs get their own chunks
-      }
-    }
-  },
-  chunkSizeWarningLimit: 500 // KB
-}
-```
-
-### Step 6: Asset Optimization
-
-- **Images:** verify WebP/AVIF formats, lazy loading (`loading="lazy"`), correct sizing
-- **CSS:** confirm Tailwind v4 purge is active in production builds
-- **Compression:** enable gzip + brotli in the Hono API server or CDN/Coolify config
-- **Tree shaking:** verify `sideEffects: false` in package.json for pure utility packages
-
-### Step 7: Vite-Specific Optimizations
-
-```typescript
-// vite.config.ts recommended settings
-export default defineConfig({
-  build: {
-    target: 'es2020',           // Modern target = smaller output
-    minify: 'esbuild',          // esbuild is faster than terser
-    cssMinify: true,
-    sourcemap: false,           // Disable in prod (or 'hidden')
-    rollupOptions: {
-      output: {
-        manualChunks: { /* see Step 5 */ }
-      }
-    },
-    chunkSizeWarningLimit: 500,
-  },
-  optimizeDeps: {
-    include: [/* stable deps */],
-  },
-})
-```
-
-### Step 8: TypeScript (tsgo) Optimizations
-
-```json
-// tsconfig.json
-{
-  "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
-    "skipLibCheck": true,       // Skip type-checking .d.ts in node_modules
-    "moduleResolution": "bundler"
-  }
-}
-```
-
-- Use project references if monorepo grows beyond ~200 files per package
-- Avoid `paths` aliases that force tsgo to re-resolve entire module graph
-
-### Step 9: Development Build Optimization
-
-- Verify `vite dev` uses esbuild (default) — never Babel in dev
-- Confirm HMR is active for React Fast Refresh
-- Source maps: `eval-cheap-module-source-map` for fastest HMR rebuilds
-- Pre-bundle all frequently-used deps at startup (see `optimizeDeps.include`)
-
-### Step 10: CI/CD Build Optimization
+### 3.9 CI/CD optimization
 
 ```yaml
-# GitHub Actions / Coolify pipeline
 cache:
-  - ~/.bun/install/cache       # Bun package cache
-  - node_modules/.vite         # Vite pre-bundle cache
-  - .tsbuildinfo               # tsgo incremental cache
-  - apps/api/.tsbuildinfo
+  - <package-manager-cache>
+  - <build-tool-pre-bundle-cache>
+  - <type-checker-incremental-cache>
 
-# Parallel CI jobs where independent
+# Parallel jobs where independent
 jobs:
-  type-check:  bun run type-check     # ~4s with tsgo
-  lint:        bunx biome check       # ~1s
-  test:        bun run test           # parallel with above
-  build:       bun run build          # after type-check passes
+  type-check:  ${tooling.typeChecker}
+  lint:        ${tooling.linter}
+  test:        ${tooling.testRunner}
+  build:       ${tooling.packageManager} run build  # after type-check
 ```
 
-### Step 11: Memory Usage Optimization
-
-- Monitor `bun run build` peak memory: `--max-heap-size` flag if OOM in CI
-- If Rollup plugin causes memory bloat, limit plugin concurrency
-- tsgo is memory-efficient by default (Go runtime)
-
-### Step 12: Output Optimization
-
-- Confirm asset filenames use content hashing: `[name]-[hash].js`
-- Verify Brotli/gzip headers are set by the CDN or Hono middleware
-- Check that `<link rel="preload">` is used for critical chunks
-- Validate `Cache-Control: max-age=31536000, immutable` on hashed assets
-
-### Step 13: Monitoring & Profiling
-
-Track bundle size regressions over time:
-
-```bash
-# Add to CI pipeline — fail if total JS exceeds budget
-bun run build && du -sh apps/web/dist/assets/*.js | awk '{sum += $1} END {print sum " KB total"}'
-```
-
-- Set up `bundlesize` or `size-limit` to enforce budgets per PR
-- Track `bun run build` timing in CI logs as a regression signal
-- Alert when any chunk exceeds `chunkSizeWarningLimit`
-
-### BUILD Output Format
+### 3.10 Output
 
 ```markdown
 ## Build Optimization Report
 
 ### Baseline
 | Metric | Value |
-|--------|-------|
+|---|---|
 | Clean build time | Xs |
 | Incremental build time | Xs |
-| Type check time | ~4s (tsgo) |
+| Type check time | Xs |
 | Total JS (gzip) | XXX KB |
 | Total CSS (gzip) | XX KB |
 | Largest chunk | XXX KB — name |
 
 ### Findings
 | # | Issue | Impact | Effort |
-|---|-------|--------|--------|
-| 1 | ... | high | low |
 
 ### Applied Optimizations
-| Optimization | Before | After | Delta |
-|-------------|--------|-------|-------|
-| manualChunks | 890KB main | 340KB main | -550KB |
+| Optimization | Before | After | Δ |
 
 ### Remaining Opportunities
 [ranked by impact]
+
+### Budgets (set in CI to fail on regression)
+| Asset class | Budget |
+| Total JS gzip | ${gates.initialJsKb}KB |
+| Largest chunk | 500KB |
 ```
 
-## Error Handling
+---
 
-| Error | Action |
-|-------|--------|
-| PSI API error | Retry once; fall back to Lighthouse CLI |
-| URL unreachable | Report error, suggest checking deployment |
-| jq not installed | Use `bun -e` to parse JSON instead |
-| Unlighthouse fails | Fall back to MULTI_ROUTE PSI scan |
-| Build fails during BUILD mode | Run `bun run type-check` first to surface TS errors |
+## 4. Database mode — `/perf db`
+
+Generic across SQL databases (Postgres / MySQL / SQLite).
+
+### 4.1 Connection pool audit
+
+Locate the connection / pool initialization (`${PATHS_LIB_ROOT}/db.*`, `lib/database.*`, etc.). Verify:
+- Pool size appropriate for serverless vs long-running
+- Idle timeout configured (avoid orphan connections)
+- Max lifetime / recycle settings
+- For Postgres: `prepare: false` if using a serverless driver that doesn't support prepared statements (else mismatch causes runtime errors)
+
+### 4.2 N+1 scan
+
+Grep across `${PATHS_BACKEND_ROOT}` and service layer:
+- `for (...) { await db.query(...) }` — classic N+1
+- Loops over arrays calling `findOne` / `select` per item
+- Missing `IN (...)` batch queries
+- Missing relation eager-loading where used in tight loops
+
+Report each hit with file:line + suggested batched alternative.
+
+### 4.3 SELECT * scan
+
+```bash
+grep -rn "select \*" ${PATHS_BACKEND_ROOT} --include="*.ts" --include="*.js" --include="*.sql" | head -50
+```
+
+For each: verify whether all columns are actually used in the call site. Suggest column projection.
+
+### 4.4 Index gap check
+
+For Postgres / MySQL:
+- List all FK columns: `SELECT conname, conrelid::regclass, conkey FROM pg_constraint WHERE contype = 'f'`
+- For each FK column → check if an index exists. Missing FK index = sequential scan on cascade / join.
+- List columns frequently in WHERE clauses (grep app code for repeated filters) without supporting index.
+- Composite indexes: WHERE a = ? AND b = ? requires `(a, b)` not `(a)` + `(b)`.
+
+### 4.5 Prepared-statement candidates
+
+Grep for repeated parameterized queries (same SQL shape, different params). Suggest preparing them or moving to a query builder that auto-prepares.
+
+### 4.6 RLS / row-level security perf (Postgres)
+
+When RLS policies use subqueries or function calls:
+- Verify the helper function is `STABLE` (cacheable per query) not `VOLATILE`
+- Confirm `security definer` functions set `search_path`
+- Avoid policies that force per-row function evaluation in hot loops
+
+### 4.7 EXPLAIN ANALYZE walk
+
+Pick 3 hottest queries (from app logs or `pg_stat_statements`). For each:
+
+```sql
+EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT) <query>;
+```
+
+Flag: seq scans on big tables, sort spilling to disk, nested loops over many rows, missing index usage.
+
+### 4.8 Output
+
+```markdown
+## DB Performance Report
+
+### Pool config
+| Property | Value | Recommendation |
+|---|---|---|
+| Pool size | X | … |
+| Idle timeout | Xs | … |
+| Prepare | true/false | … |
+
+### N+1 hits
+| File:line | Pattern | Suggested fix |
+
+### SELECT * hits
+| File:line | Columns actually used |
+
+### Missing indexes
+| Table.column | Reason | Migration SQL |
+
+### EXPLAIN ANALYZE highlights
+[3 worst queries with annotations]
+```
+
+For Supabase / Postgres-specific deeper guidance, defer to skill `supabase-postgres-best-practices`.
 
 ---
+
+## 5. Error handling
+
+| Error | Action |
+|---|---|
+| PSI API HTTP 429 | Retry once; fall back to Lighthouse CLI |
+| URL unreachable | Report; suggest checking deployment / DNS |
+| `jq` not installed | Parse JSON via `${tooling.packageManager}` `-e` script or Python |
+| Unlighthouse fails | Fall back to multi-route PSI scan |
+| Build fails during § 3 | Run `${tooling.typeChecker}` first to surface compiler errors |
+| DB inaccessible during § 4 | Run static-only checks (grep + index check from migration files) |

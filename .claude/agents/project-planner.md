@@ -204,7 +204,7 @@ When invoked with `Scope: prd`, produce the spec using this PRD template and wri
 {Tables, new columns, relations, FK indexes — every FK column must have a matching index}
 
 ## Integration Points
-{Existing NeonDash services touched: tRPC routers, webhooks, providers}
+{Existing services touched: API handlers, webhooks, providers — names per project layer map}
 
 ## Acceptance Criteria
 {Checkbox list — testable, binary pass/fail, Playwright/API-verifiable}
