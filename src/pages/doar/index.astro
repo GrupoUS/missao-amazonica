@@ -75,16 +75,29 @@ const URGENCY_OPTIONS: Array<{ value: Urgency | ''; label: string }> = [
   description="Lista de projetos ativos com necessidades imediatas para a comunidade do Rio Negro."
   activeNav="projetos"
 >
-  <section class="w-full max-w-7xl mx-auto px-6 py-xl">
-    <header class="mb-xl flex flex-col md:flex-row justify-between items-start md:items-end gap-lg">
-      <div class="max-w-2xl">
-        <h1 class="font-display type-h1 text-on-surface mb-sm">Apoie nossos projetos</h1>
-        <p class="type-body-lg text-on-surface-variant">
-          Sua doação direta constrói escolas, fornece suprimentos médicos e garante
-          alimentação para comunidades ribeirinhas na Amazônia.
-        </p>
+  <section class="relative w-full overflow-hidden border-b border-outline-variant/30">
+    <img
+      src="/images/mission/doar-reuniao-comunidade.jpg"
+      alt="Reunião comunitária da Missão Amazônica com mulheres ribeirinhas"
+      width={1920}
+      height={540}
+      loading="eager"
+      class="w-full h-48 md:h-64 object-cover"
+    />
+    <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/75 to-background/40"></div>
+    <div class="absolute inset-0 flex items-center">
+      <div class="w-full max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="max-w-2xl">
+          <h1 class="font-display type-h2 md:type-h1 text-on-background mb-sm">Apoie nossos projetos</h1>
+          <p class="type-body md:type-body-lg text-on-surface-variant">
+            Sua doação direta vira escola, atendimento médico e cesta básica nas comunidades ribeirinhas.
+          </p>
+        </div>
       </div>
-    </header>
+    </div>
+  </section>
+
+  <section class="w-full max-w-7xl mx-auto px-6 lg:px-8 py-xl">
 
     <form
       method="get"
@@ -188,6 +201,7 @@ const URGENCY_OPTIONS: Array<{ value: Urgency | ''; label: string }> = [
             imageUrl={item.image_url}
             urgency={asUrgency(item.urgency)}
             categoryName={item.categories?.name}
+            categorySlug={item.categories?.slug}
             targetCents={item.target_amount_cents}
             confirmedCents={confirmedMap.get(item.id) ?? 0}
           />

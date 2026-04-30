@@ -3,6 +3,7 @@ import Card from '@/components/ui/Card.astro';
 import Badge from '@/components/ui/Badge.astro';
 import ProgressBar from '@/components/ui/ProgressBar.astro';
 import Icon from '@/components/ui/Icon.astro';
+import ItemIllustration from '@/components/donation/ItemIllustration.astro';
 import { formatBRL, progressPct } from '@/lib/format/currency';
 import { urgencyToTone, urgencyLabel } from '@/components/ui/badge-helpers';
 import type { Urgency } from '@/lib/supabase/aliases';
@@ -26,6 +27,7 @@ const {
   imageUrl,
   urgency,
   categoryName,
+  categorySlug,
   targetCents,
   confirmedCents,
 } = Astro.props;
@@ -52,9 +54,7 @@ const pct = progressPct(confirmedCents, targetCents);
         loading="lazy"
       />
     ) : (
-      <div class="w-full h-full bg-gradient-to-br from-primary-container/20 via-secondary-container/30 to-surface-container flex items-center justify-center">
-        <Icon name="forest" size={48} class="text-primary-container/50" />
-      </div>
+      <ItemIllustration categorySlug={categorySlug} itemSlug={slug} />
     )}
     <div class="absolute top-md right-md">
       <Badge tone={tone} icon={urgency === 'urgent' ? 'priority_high' : undefined}>

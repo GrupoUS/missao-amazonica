@@ -11,11 +11,11 @@ interface Props {
 const { icon = 'eco', title, description } = Astro.props;
 ---
 
-<div class="flex flex-col items-center justify-center text-center py-xxl px-md gap-md">
-  <span class="size-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant">
+<div class="w-full flex flex-col items-center justify-center text-center py-xxl px-md gap-md">
+  <span class="size-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
     <Icon name={icon} size={28} />
   </span>
-  <div class="flex flex-col gap-1 max-w-md">
+  <div class="w-full max-w-md flex flex-col gap-1">
     <h3 class="type-h3 text-on-surface">{title}</h3>
     {description && <p class="type-body text-on-surface-variant">{description}</p>}
   </div>

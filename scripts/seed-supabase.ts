@@ -81,6 +81,7 @@ async function seedItems() {
       slug: 'filtros-de-agua-sao-gabriel',
       description:
         'Garantir água potável para 5 comunidades ribeirinhas com 50 sistemas de filtragem comunitários, prevenindo doenças hídricas que afetam especialmente as crianças durante o período de cheia do Rio Negro.',
+      image_url: null,
       image_type: 'illustrative' as const,
       urgency: 'urgent' as const,
       target_amount_cents: 500000,
@@ -95,6 +96,7 @@ async function seedItems() {
       slug: 'kits-de-primeiros-socorros',
       description:
         'Suprimentos básicos para atendimento inicial em áreas isoladas: medicamentos essenciais, materiais de curativo e equipamentos de diagnóstico portátil.',
+      image_url: null,
       image_type: 'illustrative' as const,
       urgency: 'high' as const,
       target_amount_cents: 300000,
@@ -109,7 +111,8 @@ async function seedItems() {
       slug: 'material-escolar-2026',
       description:
         'Kits educacionais completos para crianças iniciarem o ano letivo preparadas: cadernos, lápis, mochilas e livros didáticos para 200 alunos da escola rural.',
-      image_type: 'illustrative' as const,
+      image_url: '/images/items/material-escolar.jpg',
+      image_type: 'real' as const,
       urgency: 'medium' as const,
       target_amount_cents: 400000,
       status: 'published' as const,
@@ -123,6 +126,7 @@ async function seedItems() {
       slug: 'cestas-basicas-mensais',
       description:
         'Garantia de segurança alimentar para 200 famílias cadastradas durante o período de cheia dos rios, com cestas mensais entregues por equipe local.',
+      image_url: null,
       image_type: 'illustrative' as const,
       urgency: 'medium' as const,
       target_amount_cents: 3000000,
@@ -137,7 +141,8 @@ async function seedItems() {
       slug: 'barco-hospital-sal-da-terra',
       description:
         'Combustível e suprimentos médicos para expedição de 15 dias atendendo 4 comunidades isoladas no Rio Solimões. Inclui consultas, exames e atendimento odontológico.',
-      image_type: 'illustrative' as const,
+      image_url: '/images/items/barco-hospital.jpg',
+      image_type: 'real' as const,
       urgency: 'urgent' as const,
       target_amount_cents: 5000000,
       status: 'published' as const,
@@ -151,6 +156,7 @@ async function seedItems() {
       slug: 'placas-solares-portateis',
       description:
         'Energia solar portátil para atender comunidades sem acesso à rede elétrica, viabilizando refrigeração de medicamentos, iluminação noturna e estudo das crianças.',
+      image_url: null,
       image_type: 'illustrative' as const,
       urgency: 'high' as const,
       target_amount_cents: 1500000,
@@ -167,9 +173,9 @@ async function seedSettings() {
   const settings = [
     { key: 'mission_text', value: 'Acreditamos que a fé genuína se manifesta através do serviço ao próximo. Trabalhamos em parceria com líderes locais para identificar as necessidades mais urgentes das comunidades ribeirinhas do Rio Negro.', is_public: true },
     { key: 'mission_period', value: 'Toda primeira semana de abril, anualmente.', is_public: true },
-    { key: 'contact_email', value: 'contato@missaoamazonica.org', is_public: true },
+    { key: 'contact_email', value: null, is_public: true },
     { key: 'social_links', value: { instagram: null, facebook: null, youtube: null }, is_public: true },
-    { key: 'cnpj', value: '00.000.000/0001-00', is_public: true },
+    { key: 'cnpj', value: null, is_public: true },
     { key: 'pix_key', value: '', is_public: false },
     { key: 'pix_merchant_name', value: 'MISSAO AMAZONICA', is_public: false },
     { key: 'pix_merchant_city', value: 'MANAUS', is_public: false },

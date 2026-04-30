@@ -47,13 +47,29 @@ const totalUsed = (entries ?? []).reduce(
   description="Prestação de contas pública da Missão Amazônica – Sal da Terra. Cada recurso investido, comprovado."
   activeNav="transparencia"
 >
-  <main class="w-full max-w-7xl mx-auto px-6 py-xl">
-    <section class="mb-huge text-center max-w-3xl mx-auto">
-      <h1 class="font-display type-h1 text-primary-container mb-md">Transparência e Confiança</h1>
-      <p class="type-body-lg text-on-surface-variant">
-        Nosso compromisso com a verdade. Acompanhe cada recurso investido na Missão Amazônica.
-      </p>
-    </section>
+  <section class="relative w-full overflow-hidden border-b border-outline-variant/30">
+    <img
+      src="/images/mission/prestacao-equipe-campo.jpg"
+      alt="Equipe da Missão Amazônica reunida em campo durante atividade comunitária"
+      width={1920}
+      height={540}
+      loading="eager"
+      class="w-full h-48 md:h-64 object-cover"
+    />
+    <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/75 to-background/40"></div>
+    <div class="absolute inset-0 flex items-center">
+      <div class="w-full max-w-7xl mx-auto px-6 lg:px-8">
+        <div class="max-w-2xl">
+          <h1 class="font-display type-h2 md:type-h1 text-on-background mb-sm">Transparência e Confiança</h1>
+          <p class="type-body md:type-body-lg text-on-surface-variant">
+            Nosso compromisso com a verdade. Acompanhe cada recurso investido.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <main class="w-full max-w-7xl mx-auto px-6 lg:px-8 py-xl">
 
     <!-- Quick stats -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-md mb-huge">
@@ -182,31 +198,37 @@ const totalUsed = (entries ?? []).reduce(
 
       <Card class="p-xl">
         <h2 class="font-display type-h2 text-on-surface border-b border-outline-variant/40 pb-sm mb-md">
-          Próximos passos
+          Como acompanhar
         </h2>
         <p class="type-body text-on-surface-variant mb-lg">
           Os relatórios oficiais auditados ficam disponíveis aqui após cada
-          expedição. Inscreva-se ou acompanhe pelas redes da missão para receber
-          os PDFs assim que publicados.
+          expedição. Cada lançamento traz comprovantes e registros visuais.
         </p>
-        <div class="flex flex-col gap-md">
-          <a
-            href="/doar"
-            class="bg-primary-container text-on-primary py-3 px-md rounded-lg type-label hover:opacity-90 transition-opacity flex items-center justify-between"
-          >
-            <span class="inline-flex items-center gap-2">
-              <Icon name="hand_heart" size={16} /> Apoiar uma campanha
-            </span>
-            <Icon name="arrow_forward" size={16} />
-          </a>
-          <a
-            href="mailto:contato@missaoamazonica.org"
-            class="border border-secondary text-secondary py-3 px-md rounded-lg type-label hover:bg-surface-container-low transition-colors flex items-center justify-between"
-          >
-            <span>Falar com a equipe financeira</span>
-            <Icon name="arrow_forward" size={16} />
-          </a>
-        </div>
+        <ul class="flex flex-col gap-md mb-lg">
+          <li class="flex items-start gap-md">
+            <span class="text-secondary mt-1 shrink-0"><Icon name="receipt_long" size={20} /></span>
+            <div>
+              <p class="type-label text-on-surface mb-1">Comprovantes anexados</p>
+              <p class="type-caption text-on-surface-variant">Cada gasto vem com nota fiscal, recibo ou foto da entrega.</p>
+            </div>
+          </li>
+          <li class="flex items-start gap-md">
+            <span class="text-secondary mt-1 shrink-0"><Icon name="history" size={20} /></span>
+            <div>
+              <p class="type-label text-on-surface mb-1">Histórico permanente</p>
+              <p class="type-caption text-on-surface-variant">Nada é apagado. Toda movimentação fica registrada para auditoria.</p>
+            </div>
+          </li>
+        </ul>
+        <a
+          href="/doar"
+          class="bg-primary-container text-on-primary py-3 px-md rounded-lg type-label hover:opacity-90 transition-opacity flex items-center justify-between"
+        >
+          <span class="inline-flex items-center gap-2">
+            <Icon name="hand_heart" size={16} /> Apoiar uma campanha
+          </span>
+          <Icon name="arrow_forward" size={16} />
+        </a>
       </Card>
     </section>
   </main>
