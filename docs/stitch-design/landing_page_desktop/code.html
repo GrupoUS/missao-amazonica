@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Missão Amazônica – Sal da Terra</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Literata:wght@600;700&amp;family=Nunito+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary-fixed-variant": "#274e3d",
+                      "on-surface": "#1a1c1a",
+                      "inverse-on-surface": "#f0f1ee",
+                      "background": "#f9faf6",
+                      "secondary-fixed-dim": "#95d4b3",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#f9faf6",
+                      "surface-variant": "#e2e3e0",
+                      "tertiary-fixed": "#ffdad8",
+                      "on-tertiary-container": "#d29895",
+                      "primary-container": "#1b4332",
+                      "surface-tint": "#3f6653",
+                      "on-secondary-fixed-variant": "#0e5138",
+                      "on-primary-fixed": "#002114",
+                      "on-surface-variant": "#414844",
+                      "on-secondary-container": "#316e52",
+                      "surface-container-low": "#f3f4f1",
+                      "error-container": "#ffdad6",
+                      "surface-container-highest": "#e2e3e0",
+                      "tertiary": "#401b1b",
+                      "inverse-surface": "#2f312f",
+                      "secondary-container": "#aeeecb",
+                      "on-error-container": "#93000a",
+                      "outline": "#717973",
+                      "on-secondary-fixed": "#002114",
+                      "on-primary": "#ffffff",
+                      "surface-container-high": "#e8e8e5",
+                      "secondary": "#2c694e",
+                      "on-error": "#ffffff",
+                      "on-background": "#1a1c1a",
+                      "inverse-primary": "#a5d0b9",
+                      "on-primary-container": "#86af99",
+                      "surface-bright": "#f9faf6",
+                      "tertiary-fixed-dim": "#f5b7b4",
+                      "on-secondary": "#ffffff",
+                      "surface-container": "#eeeeeb",
+                      "on-tertiary-fixed-variant": "#673a39",
+                      "on-tertiary-fixed": "#331111",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#a5d0b9",
+                      "secondary-fixed": "#b1f0ce",
+                      "surface-dim": "#dadad7",
+                      "primary-fixed": "#c1ecd4",
+                      "tertiary-container": "#5a302f",
+                      "outline-variant": "#c1c8c2",
+                      "primary": "#012d1d",
+                      "on-tertiary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xxl": "48px",
+                      "sm": "8px",
+                      "lg": "24px",
+                      "md": "16px",
+                      "xl": "32px",
+                      "xs": "4px",
+                      "huge": "64px"
+              },
+              "fontFamily": {
+                      "h2": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "Inter"
+                      ],
+                      "h3": [
+                              "Inter"
+                      ],
+                      "h1": [
+                              "Inter"
+                      ],
+                      "caption": [
+                              "Inter"
+                      ],
+                      "body-base": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "h2": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "h3": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "h1": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "caption": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-base": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background antialiased font-body-base text-body-base">
+<!-- TopNavBar -->
+<header class="bg-[#faf6f0] dark:bg-stone-900 border-b border-[#4a7c59]/10 dark:border-stone-800 shadow-sm docked full-width top-0 z-50">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-7xl mx-auto">
+<div class="font-['Literata'] text-xl font-bold text-[#4a7c59] dark:text-emerald-500 flex items-center gap-2">
+<img alt="Missão Amazônica Logo" class="h-8 w-auto" data-alt="A clean, modern logo design featuring an abstract leaf or river motif in deep Amazon green. The style is minimalist and corporate, suitable for a transparent, high-impact non-profit organization. The lighting is neutral, and the background is pure white to isolate the logo mark clearly." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIfALpU7ML6mCv4AoRDsJBuvwCfDJ-19ee37GHe8zdEcdJnqnNQVMGH-b96Sewyb3UPcKM_vywLc5tCBd7aeWrOKkElvXBcSf_nS9TEfKZ4ij7KVmJrrXw-d2e2wTmr1pUORYjHxg90g0F3qhhc_JEHHvl2jRMDzmXeMEOoG22rk57032YmGt9tYIW9kFRmOP8b4a_qIF5FsdEmKX2fJqkqLMhGa59TiVd0xCT9YDjHW4KNq43UyzT99Ifz6CLqaqvnbgphSMOwV8"/>
+                Missão Amazônica
+            </div>
+<nav class="hidden md:flex gap-8">
+<a class="font-['Nunito_Sans'] text-sm font-medium text-[#4a7c59] dark:text-emerald-400 border-b-2 border-[#4a7c59] pb-1 active:scale-95 duration-150" href="#">Missão</a>
+<a class="font-['Nunito_Sans'] text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all px-2 py-1 rounded active:scale-95 duration-150" href="#">Projetos</a>
+<a class="font-['Nunito_Sans'] text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all px-2 py-1 rounded active:scale-95 duration-150" href="#">Transparência</a>
+<a class="font-['Nunito_Sans'] text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all px-2 py-1 rounded active:scale-95 duration-150" href="#">Impacto</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="font-['Nunito_Sans'] text-sm font-medium text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all p-2 rounded-full active:scale-95 duration-150 flex items-center justify-center">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+<button class="bg-primary-container text-on-primary px-4 py-2 rounded font-label-sm hover:opacity-90 transition-opacity">Contribuir</button>
+</div>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative h-[819px] min-h-[600px] flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 z-0">
+<img alt="Amazon River" class="w-full h-full object-cover" data-alt="A breathtaking, wide-angle shot of the Amazon River at sunrise, with lush, dense deep green rainforest lining the banks. The water reflects the warm, golden light of the early morning sun, creating a serene and hopeful mood. A small, traditional wooden boat is visible in the distance, emphasizing the human element. The aesthetic is highly professional, cinematic, and calm, utilizing earthy greens and warm golden tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHxB3kMrNbd2UrgTVrYVY6McaOb6CPKmhY8XyojmI5jVlr5tskihPKeWc_2Ud2T7FYxVYdPnlVVzKV7JyNmL60EWiBvpH_rgaL5QPxV4m6IsW8f8-js15bQXAAH649-3hIn0GJJtDdaYuB7VOayxMbD8ahSYYD2g32FOHQ5bdbWORbwof8aKnPGhQG81CGlx2x1Hq3pla1CUSohHqgldyTG4gRLqWAWALo8SNmtrtciNaCAH3Vs5ySdIWPO0qjwJacTE01yPHlJ-4"/>
+<div class="absolute inset-0 bg-gradient-to-r from-background/90 via-background/60 to-transparent"></div>
+</div>
+<div class="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 flex flex-col items-start text-left">
+<span class="inline-block py-1 px-3 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm mb-lg shadow-sm border border-outline-variant/30">
+                    Missão Sal da Terra
+                </span>
+<h1 class="font-h1 text-h1 text-on-background max-w-3xl mb-lg leading-tight">
+                    Transformando vidas nas margens do Rio Negro.
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mb-xl">
+                    Levando esperança, saúde e a palavra através de ações concretas e transparentes nas comunidades ribeirinhas mais isoladas da Amazônia.
+                </p>
+<div class="flex flex-wrap gap-md">
+<button class="bg-primary-container text-on-primary px-8 py-3 rounded font-label-sm text-label-sm shadow-sm hover:opacity-90 transition-all flex items-center gap-2">
+                        Contribuir com a missão
+                        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+<button class="border border-secondary text-secondary px-8 py-3 rounded font-label-sm text-label-sm hover:bg-surface-container-low transition-all">
+                        Conheça os Projetos
+                    </button>
+</div>
+</div>
+</section>
+<!-- Trust Bar -->
+<section class="bg-surface-container-lowest border-y border-surface-variant py-md">
+<div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap justify-between items-center gap-lg">
+<div class="flex items-center gap-sm text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-secondary">verified</span>
+<span>100% Transparência Financeira</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-secondary">monitor_heart</span>
+<span>Relatórios Mensais de Impacto</span>
+</div>
+<div class="flex items-center gap-sm text-on-surface-variant font-body-base text-body-base">
+<span class="material-symbols-outlined text-secondary">handshake</span>
+<span>Auditoria Independente</span>
+</div>
+</div>
+</section>
+<!-- Nossa Missão -->
+<section class="py-huge bg-background">
+<div class="max-w-7xl mx-auto px-6 lg:px-8">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-huge items-center">
+<div>
+<h2 class="font-h2 text-h2 text-on-background mb-lg">Nossa Missão</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-md">
+                            Acreditamos que a fé genuína se manifesta através do serviço ao próximo. Nosso trabalho é focado em levar não apenas suprimentos físicos, mas dignidade e esperança para as comunidades ribeirinhas do Rio Negro.
+                        </p>
+<p class="font-body-base text-body-base text-on-surface-variant mb-xl">
+                            Trabalhamos em parceria com líderes locais para identificar as necessidades mais urgentes, desde acesso a água potável e cuidados médicos básicos, até materiais educativos e apoio espiritual.
+                        </p>
+<div class="space-y-sm">
+<div class="flex items-start gap-md">
+<span class="material-symbols-outlined text-secondary mt-1">favorite</span>
+<div>
+<h4 class="font-label-sm text-label-sm text-on-surface mb-xs">Cuidado Integral</h4>
+<p class="font-caption text-caption text-on-surface-variant">Atendendo necessidades físicas, emocionais e espirituais.</p>
+</div>
+</div>
+<div class="flex items-start gap-md">
+<span class="material-symbols-outlined text-secondary mt-1">groups</span>
+<div>
+<h4 class="font-label-sm text-label-sm text-on-surface mb-xs">Foco na Comunidade</h4>
+<p class="font-caption text-caption text-on-surface-variant">Empoderando líderes locais para um impacto sustentável.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="relative">
+<div class="absolute inset-0 bg-secondary/10 translate-x-4 translate-y-4 rounded-lg -z-10"></div>
+<img alt="Community Interaction" class="rounded-lg shadow-sm w-full object-cover aspect-[4/3]" data-alt="A warm, candid photograph showing a diverse group of humanitarian workers smiling and interacting gently with indigenous community members in a sunlit outdoor setting near a river. The lighting is soft and natural, creating a mood of trust, compassion, and human connection. The color palette emphasizes natural skin tones, earthy greens, and bright, hopeful sunlight. The image feels authentic and uplifting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDBxp3HQnWIfVurwGxQrGFrObFswcVaKdgnz4IDMeluFeHQEg-_hrKgtm-dUUtvLDIsNpPfRChRWLBa3aCJvMWyhcj2NNiKsPd3T-KqXXC41N2Wsfdpc8IcTcASpzeLkEsrXXiub7iNkKUd_JxnZBujBPaDfqbdjFN-OpTLbhfmDDe55gH7KahKzxpTGOmnq9qBHyfqGMIYSLdSapWtgMhGsHBUL3J0zwzgz5mSvafoUKcC_sjDWh05hWEA3H0Ktql3G_dReaFoZk"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Impacto em Números (Bento Grid) -->
+<section class="py-huge bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-6 lg:px-8">
+<div class="text-center mb-xl">
+<h2 class="font-h2 text-h2 text-on-background mb-sm">Impacto em Números</h2>
+<p class="font-body-base text-body-base text-on-surface-variant max-w-2xl mx-auto">Resultados mensuráveis do nosso compromisso com as comunidades ribeirinhas.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Stat Card 1 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border-l-4 border-secondary flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-[48px] text-primary-container mb-sm">location_on</span>
+<h3 class="font-h1 text-h1 text-on-surface mb-xs">42</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Comunidades Atendidas</p>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border-l-4 border-secondary flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-[48px] text-primary-container mb-sm">medical_services</span>
+<h3 class="font-h1 text-h1 text-on-surface mb-xs">1.2k</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Atendimentos Médicos</p>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface-container-lowest p-lg rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border-l-4 border-secondary flex flex-col justify-center items-center text-center">
+<span class="material-symbols-outlined text-[48px] text-primary-container mb-sm">inventory_2</span>
+<h3 class="font-h1 text-h1 text-on-surface mb-xs">5k+</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Itens Entregues</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Itens Urgentes -->
+<section class="py-huge bg-background">
+<div class="max-w-7xl mx-auto px-6 lg:px-8">
+<div class="flex justify-between items-end mb-xl">
+<div>
+<h2 class="font-h2 text-h2 text-on-background mb-sm">Itens Urgentes</h2>
+<p class="font-body-base text-body-base text-on-surface-variant">Apoie as necessidades imediatas para nossa próxima expedição.</p>
+</div>
+<button class="hidden md:flex text-secondary font-label-sm text-label-sm items-center gap-xs hover:text-primary transition-colors">
+                        Ver todas as campanhas <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+<!-- Donation Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border border-outline-variant/20 overflow-hidden flex flex-col">
+<div class="h-48 bg-surface-container relative">
+<img alt="Filtros de Água" class="w-full h-full object-cover" data-alt="A clean, clinical studio shot of modern, durable portable water filters arranged neatly on a crisp white surface. The lighting is bright and even, highlighting the clear blue and grey tones of the equipment. The style is highly professional and objective, emphasizing the utility and life-saving nature of the items in a minimalist, modern context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC27KowRBaRn3kkDaFwScDVHeukfRBl8qB0ZNK7mDOBcChZYDB47EEtr0fmnUZ3ztT3h270m0mfVrHGCATKatVdFm8NPz4LDefGuNeKlsty5tow6VerLMZVzZAR-xrLCkaHyFU5uE1BdHTY32ogQNPj10kYqy_7KIRefSUz1VwIVcL3EtDDEeQ1w7idL2PrLrDqrOzMnMh6dqhMEvNqr7C23hXibTdCCmlAwjASv-aYCC4FT-Udqdu21TXu_IgEhQZVsXgpuwfWmXA"/>
+<div class="absolute top-md right-md bg-error-container text-on-error-container px-2 py-1 rounded font-caption text-caption font-medium">Urgente</div>
+</div>
+<div class="p-md flex flex-col flex-grow">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs">Filtros de Água</h3>
+<p class="font-caption text-caption text-on-surface-variant mb-md flex-grow">Garantindo água potável para prevenir doenças hídricas em 5 comunidades.</p>
+<div class="mb-sm">
+<div class="flex justify-between font-caption text-caption mb-xs text-on-surface-variant">
+<span>Arrecadado: R$ 3.500</span>
+<span>Meta: R$ 5.000</span>
+</div>
+<!-- Progress Bar Component -->
+<div class="h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 70%;"></div>
+</div>
+</div>
+<button class="w-full mt-auto bg-surface-container text-on-surface py-2 rounded font-label-sm text-label-sm border border-outline-variant/30 hover:bg-surface-variant transition-colors">
+                                Doar R$ 50
+                            </button>
+</div>
+</div>
+<!-- Donation Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border border-outline-variant/20 overflow-hidden flex flex-col">
+<div class="h-48 bg-surface-container relative">
+<img alt="Kits de Primeiros Socorros" class="w-full h-full object-cover" data-alt="A neatly organized flat lay of essential first aid medical supplies, including bandages, antiseptics, and basic medicines, arranged on a clean, light neutral background. The lighting is bright, sterile, and professional, casting soft shadows to give depth. The color palette focuses on crisp whites, clinical blues, and small accents of red cross symbols, projecting a sense of care and readiness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBql7w3Al_-mQ4jBCCDP0ZHg_sZ2ERnxFnoOiYwuH4_fOSanRESuxQmh2jCkmVQxnPLnv3SfvOs3PgfGwH0hh-U5A6RjntPZQ0C2cNlFAs0qTh2mZWp6m3ODzjy3hXBmUxYR35TKN8zelMEZJDIP9rIXOX1phf0XzKSpG_nDcnkAcaECRtuGYso3lgD5XMb9diUkEzt7ZyMtoo3PtN0svJSjIwnjHUR9kvotRkheAYsSFATzBqKqkR122I2-MMh_UP_fwQ0LN8TmS0"/>
+</div>
+<div class="p-md flex flex-col flex-grow">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs">Kits de Primeiros Socorros</h3>
+<p class="font-caption text-caption text-on-surface-variant mb-md flex-grow">Suprimentos básicos para atendimento inicial em áreas isoladas.</p>
+<div class="mb-sm">
+<div class="flex justify-between font-caption text-caption mb-xs text-on-surface-variant">
+<span>Arrecadado: R$ 1.200</span>
+<span>Meta: R$ 3.000</span>
+</div>
+<div class="h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 40%;"></div>
+</div>
+</div>
+<button class="w-full mt-auto bg-surface-container text-on-surface py-2 rounded font-label-sm text-label-sm border border-outline-variant/30 hover:bg-surface-variant transition-colors">
+                                Doar R$ 100
+                            </button>
+</div>
+</div>
+<!-- Donation Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] border border-outline-variant/20 overflow-hidden flex flex-col">
+<div class="h-48 bg-surface-container relative">
+<img alt="Material Escolar" class="w-full h-full object-cover" data-alt="A colorful, high-quality overhead shot of fresh school supplies, including notebooks, pencils, and bright backpacks, neatly arranged on a warm, wooden texture surface. The natural sunlight washes over the items, creating a cheerful, optimistic, and hopeful mood. The vibrant colors of the educational materials stand out sharply, symbolizing learning and future potential." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsh03bszhaz7admk2kuzxKKauh4Hn3j9a9JoNuc9pRqdf3TTnB-GpSbZq60UZpjARmf9wJNhG2b5ao-VhTQfOAt9m-MRPhg9M0E4NOtP-yGEqyXby4ZiUOp2G6z5d6tWjlaEBYU2dLcBqDTWHmFbpgi8X_aIeGZg9LZ1Q82c14Pk2ZK4XNn6kcPmHrRE1tmtdsVveuKjAWlZcRhNEvkvmZnjO_EX4-TqHlN67mEZP7miupmWwAdPRUvtOTbdU10mux07ZOjzIoyQk"/>
+</div>
+<div class="p-md flex flex-col flex-grow">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs">Material Escolar</h3>
+<p class="font-caption text-caption text-on-surface-variant mb-md flex-grow">Kits educacionais para crianças iniciarem o ano letivo preparadas.</p>
+<div class="mb-sm">
+<div class="flex justify-between font-caption text-caption mb-xs text-on-surface-variant">
+<span>Arrecadado: R$ 3.800</span>
+<span>Meta: R$ 4.000</span>
+</div>
+<div class="h-2 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 95%;"></div>
+</div>
+</div>
+<button class="w-full mt-auto bg-surface-container text-on-surface py-2 rounded font-label-sm text-label-sm border border-outline-variant/30 hover:bg-surface-variant transition-colors">
+                                Doar R$ 30
+                            </button>
+</div>
+</div>
+</div>
+<button class="md:hidden w-full mt-lg text-secondary border border-secondary py-2 rounded font-label-sm text-label-sm items-center justify-center gap-xs hover:bg-surface-container-low transition-colors">
+                    Ver todas as campanhas
+                </button>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-stone-100 dark:bg-stone-900 border-t border-stone-200 dark:border-stone-800 w-full py-12 mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8 px-8 max-w-7xl mx-auto">
+<div class="col-span-1 md:col-span-2">
+<div class="font-['Literata'] text-lg font-semibold text-stone-800 dark:text-stone-200 mb-4 flex items-center gap-2">
+                    Missão Amazônica
+                </div>
+<p class="font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 mb-4">
+                    © 2024 Missão Amazônica – Sal da Terra. CNPJ: 00.000.000/0001-00
+                </p>
+</div>
+<div class="col-span-1 flex flex-col gap-2">
+<a class="font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Relatórios</a>
+<a class="font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Privacidade</a>
+</div>
+<div class="col-span-1 flex flex-col gap-2">
+<a class="font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Contato</a>
+<a class="font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Voluntariado</a>
+</div>
+</div>
+</footer>
+</body></html>

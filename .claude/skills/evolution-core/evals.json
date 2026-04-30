@@ -1,0 +1,84 @@
+{
+  "skill": "evolution-core",
+  "version": "1.0.0",
+  "assertions": [
+    {
+      "id": "A01",
+      "description": "Output references memory_manager.py as the CLI tool",
+      "type": "structural",
+      "check": "contains: \"memory_manager.py\"",
+      "critical": true
+    },
+    {
+      "id": "A02",
+      "description": "Output uses correct CLI commands (capture, load_context, session, stats)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"capture\", \"load_context\", \"session start\", \"session end\", \"stats\"]",
+      "critical": true
+    },
+    {
+      "id": "A03",
+      "description": "Output references JSONL files for storage (errors.jsonl, sessions.jsonl)",
+      "type": "structural",
+      "check": "contains_one_of: [\".jsonl\", \"errors.jsonl\", \"sessions.jsonl\"]",
+      "critical": false
+    },
+    {
+      "id": "A04",
+      "description": "Output does NOT suggest modifying evolution files directly (use CLI instead)",
+      "type": "behavioral",
+      "check": "not_contains: \"echo >>\"",
+      "critical": true
+    },
+    {
+      "id": "A05",
+      "description": "Output references the evolution docs directory path",
+      "type": "structural",
+      "check": "contains_one_of: [\".claude/docs/evolution\", \"evolution/\"]",
+      "critical": false
+    },
+    {
+      "id": "A06",
+      "description": "Output references SQLite or memory.db for the persistent store",
+      "type": "structural",
+      "check": "contains_one_of: [\"SQLite\", \"sqlite\", \"memory.db\"]",
+      "critical": false
+    },
+    {
+      "id": "A07",
+      "description": "Output references hooks for automatic capture (evolution-load.sh, evolution-error.sh)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"hook\", \"evolution-load\", \"evolution-error\", \"evolution-end\", \"PostToolUseFailure\", \"SessionStart\"]",
+      "critical": false
+    },
+    {
+      "id": "A08",
+      "description": "Output length is under 500 words for focused responses",
+      "type": "format",
+      "check": "word_count_max: 500",
+      "critical": false
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "T01",
+      "input": "How do I capture a bug fix learning using the evolution-core system?",
+      "expected_assertions": ["A01", "A02", "A04", "A05", "A08"]
+    },
+    {
+      "id": "T02",
+      "input": "How do I load historical context at the start of a new session?",
+      "expected_assertions": ["A01", "A02", "A05", "A06", "A08"]
+    },
+    {
+      "id": "T03",
+      "input": "How does the evolution-core system automatically capture errors?",
+      "expected_assertions": ["A01", "A03", "A04", "A05", "A07", "A08"]
+    },
+    {
+      "id": "T04",
+      "input": "Full overview: explain the evolution-core architecture, storage, CLI, hooks, and integration with /evolve.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08"]
+    }
+  ]
+}

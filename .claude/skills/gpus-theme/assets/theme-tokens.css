@@ -1,0 +1,324 @@
+/**
+ * GPUS Theme — Portable CSS Theme Tokens
+ * Design System: The Sovereign Architect
+ *
+ * Stitch Systems: Executive Gilt (dark) + GrupoUS (light)
+ * Project ID: 14494421539354595743
+ *
+ * Copy this file to your project and import in your main CSS:
+ * @import "tailwindcss";
+ * @import "./theme-tokens.css";
+ *
+ * Note: Uses Tailwind CSS v4 directives (@theme inline, @utility, @custom-variant).
+ */
+
+/* stylelint-disable at-rule-no-unknown */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource/manrope";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Neon Brand Extensions */
+  --color-neon-blue-dark: #0f172a;
+  --color-neon-blue: #0369a1;
+  --color-neon-gold: #b45309;
+  --color-neon-paper: #f8fafc;
+
+  /* Azul Petróleo */
+  --color-neon-petroleo: #0f4c75;
+  --color-neon-petroleo-light: #3282b8;
+  --color-neon-petroleo-dark: #1b262c;
+
+  /* Dark Mode Brand Variants */
+  --color-neon-blue-light: #64b5f6;
+  --color-neon-blue-highlight: #90caf9;
+  --color-neon-gold-bright: #ffd700;
+  --color-neon-gold-light: #ffecb3;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+}
+
+/* ============================================================
+ * LIGHT THEME — GrupoUS (Stitch: c852e07ec0444f10b9ab3015c94dbaf2)
+ * Azul Petróleo foreground + GPUS Gold primary
+ * ============================================================ */
+:root {
+  --color-paper: #ffffff;
+  --color-pure-white: #ffffff;
+  --color-neon-pink: #ec1380;
+  --color-neon-blue-dark: #0f172a;
+  --color-neon-blue-medium: #1e293b;
+  --color-neon-gold: #b45309;
+  --color-neon-gray-light: #f1f5f9;
+  --color-neon-border: #cbd5e1;
+
+  --color-neon-petroleo: #0f4c75;
+  --color-neon-petroleo-light: #3282b8;
+  --color-neon-petroleo-dark: #1b262c;
+
+  --font-sans:
+    "Manrope", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Fira Code", "JetBrains Mono", monospace;
+
+  --radius: 0.5rem;
+
+  /* Semantic Tokens — Light */
+  --background: 210 40% 98%;
+  --foreground: 203 65% 26%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 203 65% 26%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 203 65% 26%;
+
+  --primary: 38 60% 45%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 38 50% 85%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 25% 40%;
+
+  --accent: 38 60% 95%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --success: 142 76% 36%;
+  --success-foreground: 210 40% 98%;
+
+  --warning: 38 92% 50%;
+  --warning-foreground: 222 47% 11%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 38 60% 45%;
+
+  --chart-1: 38 60% 45%;
+  --chart-2: 142 76% 36%;
+  --chart-3: 38 92% 50%;
+  --chart-4: 0 84% 60%;
+  --chart-5: 217 91% 60%;
+
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-primary: 38 60% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 38 60% 95%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-border: 214 32% 91%;
+  --sidebar-ring: 38 60% 45%;
+
+  /* Clerk Theme — Light */
+  --clerk-color-primary: hsl(38, 60%, 45%);
+  --clerk-color-primary-foreground: hsl(0, 0%, 100%);
+  --clerk-color-background: hsl(210, 40%, 98%);
+  --clerk-color-foreground: hsl(203, 65%, 26%);
+  --clerk-color-muted-foreground: hsl(215, 25%, 40%);
+  --clerk-color-muted: hsl(210, 40%, 96%);
+  --clerk-color-input: hsl(0, 0%, 100%);
+  --clerk-color-input-foreground: hsl(203, 65%, 26%);
+  --clerk-color-border: hsl(214, 32%, 91%);
+  --clerk-color-ring: hsl(38, 60%, 45%);
+  --clerk-color-danger: hsl(0, 84%, 60%);
+  --clerk-font-family: "Manrope", "Inter", sans-serif;
+  --clerk-border-radius: 0.5rem;
+}
+
+/* ============================================================
+ * DARK THEME — Executive Gilt (Stitch: 4a5198c74b714d789767915ca3232125)
+ * Slate 950 void + Amber 400 glowing gold
+ * ============================================================ */
+.dark {
+  --background: 222 47% 6%;
+  --foreground: 210 40% 98%;
+
+  --card: 222 47% 10%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 8%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 43 96% 56%;
+  --primary-foreground: 222 47% 10%;
+
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+
+  --success: 142 76% 36%;
+  --success-foreground: 210 40% 98%;
+
+  --warning: 43 96% 56%;
+  --warning-foreground: 222 47% 10%;
+
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 43 96% 56%;
+
+  --chart-1: 43 96% 56%;
+  --chart-2: 217 91% 60%;
+  --chart-3: 142 76% 36%;
+  --chart-4: 280 84% 60%;
+  --chart-5: 0 84% 60%;
+
+  --sidebar: 222 47% 7%;
+  --sidebar-foreground: 210 40% 98%;
+  --sidebar-primary: 43 96% 56%;
+  --sidebar-primary-foreground: 222 47% 10%;
+  --sidebar-accent: 217 33% 17%;
+  --sidebar-accent-foreground: 210 40% 98%;
+  --sidebar-border: 217 33% 12%;
+  --sidebar-ring: 43 96% 56%;
+
+  /* Neon Brand — Dark Overrides */
+  --color-neon-blue-dark: #020617;
+  --color-neon-blue: #0ea5e9;
+  --color-neon-gold: #fbbf24;
+  --color-neon-blue-light: #38bdf8;
+  --color-neon-blue-highlight: #7dd3fc;
+  --color-neon-gold-bright: #fcd34d;
+  --color-neon-gold-light: #fef3c7;
+  --color-neon-petroleo: #0ea5e9;
+  --color-neon-petroleo-light: #38bdf8;
+  --color-neon-petroleo-dark: #0369a1;
+
+  /* Clerk Theme — Dark */
+  --clerk-color-primary: hsl(43, 96%, 56%);
+  --clerk-color-primary-foreground: hsl(222, 47%, 10%);
+  --clerk-color-background: hsl(222, 47%, 10%);
+  --clerk-color-foreground: hsl(210, 40%, 98%);
+  --clerk-color-muted-foreground: hsl(215, 20%, 65%);
+  --clerk-color-muted: hsl(217, 33%, 17%);
+  --clerk-color-input: hsl(217, 33%, 17%);
+  --clerk-color-input-foreground: hsl(210, 40%, 98%);
+  --clerk-color-border: hsl(217, 33%, 17%);
+  --clerk-color-ring: hsl(43, 96%, 56%);
+  --clerk-color-danger: hsl(0, 63%, 31%);
+  --clerk-font-family: "Manrope", "Inter", sans-serif;
+  --clerk-border-radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [type="button"]:not(:disabled),
+  [type="submit"]:not(:disabled),
+  [type="reset"]:not(:disabled),
+  a[href],
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    @apply cursor-pointer;
+  }
+}
+
+/* View Transition: Theme Toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation: none;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 9999; }
+
+/* Neon Brand Utilities */
+@utility bg-neon-blue-dark { background-color: var(--color-neon-blue-dark); }
+@utility bg-neon-blue { background-color: var(--color-neon-blue); }
+@utility bg-neon-gold { background-color: var(--color-neon-gold); }
+@utility bg-neon-gray { background-color: var(--color-neon-gray-light); }
+@utility text-neon-blue-dark { color: var(--color-neon-blue-dark); }
+@utility text-neon-blue { color: var(--color-neon-blue); }
+@utility text-neon-gold { color: var(--color-neon-gold); }
+@utility border-neon-blue { border-color: var(--color-neon-blue); }
+@utility border-neon-gold { border-color: var(--color-neon-gold); }
+@utility border-neon-border { border-color: var(--color-neon-border); }
+@utility text-neon-petroleo { color: var(--color-neon-petroleo); }
+@utility text-neon-petroleo-light { color: var(--color-neon-petroleo-light); }
+@utility text-neon-petroleo-dark { color: var(--color-neon-petroleo-dark); }
+@utility text-neon-gold-bright { color: var(--color-neon-gold-bright); }
+@utility text-neon-blue-light { color: var(--color-neon-blue-light); }
+@utility text-neon-blue-highlight { color: var(--color-neon-blue-highlight); }
+
+/* Mesh Background */
+@utility bg-mesh {
+  background-image:
+    radial-gradient(at 40% 20%, hsl(var(--primary) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 80% 0%, hsl(var(--accent) / 0.1) 0px, transparent 50%),
+    radial-gradient(at 0% 50%, hsl(var(--primary) / 0.05) 0px, transparent 50%);
+}

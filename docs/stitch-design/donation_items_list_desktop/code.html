@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Itens de Doação - Missão Amazônica</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Literata:wght@600;700&amp;family=Nunito+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-primary-fixed-variant": "#274e3d",
+                  "on-surface": "#1a1c1a",
+                  "inverse-on-surface": "#f0f1ee",
+                  "background": "#f9faf6",
+                  "secondary-fixed-dim": "#95d4b3",
+                  "surface-container-lowest": "#ffffff",
+                  "surface": "#f9faf6",
+                  "surface-variant": "#e2e3e0",
+                  "tertiary-fixed": "#ffdad8",
+                  "on-tertiary-container": "#d29895",
+                  "primary-container": "#1b4332",
+                  "surface-tint": "#3f6653",
+                  "on-secondary-fixed-variant": "#0e5138",
+                  "on-primary-fixed": "#002114",
+                  "on-surface-variant": "#414844",
+                  "on-secondary-container": "#316e52",
+                  "surface-container-low": "#f3f4f1",
+                  "error-container": "#ffdad6",
+                  "surface-container-highest": "#e2e3e0",
+                  "tertiary": "#401b1b",
+                  "inverse-surface": "#2f312f",
+                  "secondary-container": "#aeeecb",
+                  "on-error-container": "#93000a",
+                  "outline": "#717973",
+                  "on-secondary-fixed": "#002114",
+                  "on-primary": "#ffffff",
+                  "surface-container-high": "#e8e8e5",
+                  "secondary": "#2c694e",
+                  "on-error": "#ffffff",
+                  "on-background": "#1a1c1a",
+                  "inverse-primary": "#a5d0b9",
+                  "on-primary-container": "#86af99",
+                  "surface-bright": "#f9faf6",
+                  "tertiary-fixed-dim": "#f5b7b4",
+                  "on-secondary": "#ffffff",
+                  "surface-container": "#eeeeeb",
+                  "on-tertiary-fixed-variant": "#673a39",
+                  "on-tertiary-fixed": "#331111",
+                  "error": "#ba1a1a",
+                  "primary-fixed-dim": "#a5d0b9",
+                  "secondary-fixed": "#b1f0ce",
+                  "surface-dim": "#dadad7",
+                  "primary-fixed": "#c1ecd4",
+                  "tertiary-container": "#5a302f",
+                  "outline-variant": "#c1c8c2",
+                  "primary": "#012d1d",
+                  "on-tertiary": "#ffffff"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "xxl": "48px",
+                  "sm": "8px",
+                  "lg": "24px",
+                  "md": "16px",
+                  "xl": "32px",
+                  "xs": "4px",
+                  "huge": "64px"
+          },
+          "fontFamily": {
+                  "h2": [
+                          "Inter"
+                  ],
+                  "body-lg": [
+                          "Inter"
+                  ],
+                  "label-sm": [
+                          "Inter"
+                  ],
+                  "h3": [
+                          "Inter"
+                  ],
+                  "h1": [
+                          "Inter"
+                  ],
+                  "caption": [
+                          "Inter"
+                  ],
+                  "body-base": [
+                          "Inter"
+                  ]
+          },
+          "fontSize": {
+                  "h2": [
+                          "32px",
+                          {
+                                  "lineHeight": "1.3",
+                                  "letterSpacing": "-0.01em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "body-lg": [
+                          "18px",
+                          {
+                                  "lineHeight": "1.6",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "label-sm": [
+                          "14px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "0.02em",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "h3": [
+                          "24px",
+                          {
+                                  "lineHeight": "1.4",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "h1": [
+                          "48px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "700"
+                          }
+                  ],
+                  "caption": [
+                          "12px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "body-base": [
+                          "16px",
+                          {
+                                  "lineHeight": "1.6",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ]
+          }
+  },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .material-symbols-outlined[data-weight="fill"] {
+      font-variation-settings: 'FILL' 1;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface font-body-base antialiased selection:bg-primary-container selection:text-on-primary-container min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="bg-[#faf6f0] dark:bg-stone-900 border-b border-[#4a7c59]/10 dark:border-stone-800 shadow-sm docked full-width top-0 z-50 transition-all">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-7xl mx-auto">
+<div class="font-['Literata'] text-xl font-bold text-[#4a7c59] dark:text-emerald-500">
+        Missão Amazônica
+      </div>
+<div class="hidden md:flex items-center gap-lg font-['Nunito_Sans'] text-sm font-medium">
+<a class="text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95 duration-150 rounded-DEFAULT px-md py-sm" href="#">Missão</a>
+<a class="text-[#4a7c59] dark:text-emerald-400 border-b-2 border-[#4a7c59] pb-1 hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95 duration-150 px-md py-sm" href="#">Projetos</a>
+<a class="text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95 duration-150 rounded-DEFAULT px-md py-sm" href="#">Transparência</a>
+<a class="text-stone-600 dark:text-stone-400 hover:text-[#4a7c59] hover:bg-stone-100 dark:hover:bg-stone-800 transition-all active:scale-95 duration-150 rounded-DEFAULT px-md py-sm" href="#">Impacto</a>
+</div>
+<div class="flex items-center gap-md">
+<button class="bg-primary-container text-on-primary font-label-sm font-label-sm px-lg py-sm rounded-lg hover:opacity-90 transition-opacity active:scale-95 duration-150 shadow-sm">
+          Contribuir
+        </button>
+<button aria-label="account_circle" class="text-[#4a7c59] dark:text-emerald-500 hover:bg-stone-100 dark:hover:bg-stone-800 p-xs rounded-full transition-all active:scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Main Canvas -->
+<main class="flex-grow w-full max-w-7xl mx-auto px-6 py-xl">
+<!-- Header Section -->
+<header class="mb-xl text-center md:text-left flex flex-col md:flex-row justify-between items-end gap-lg">
+<div class="max-w-2xl">
+<h1 class="font-h1 text-h1 text-on-surface mb-sm">Apoie Nossos Projetos</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Sua doação direta constrói escolas, fornece suprimentos médicos e garante alimentação para comunidades ribeirinhas na Amazônia.</p>
+</div>
+</header>
+<!-- Filters & Controls (Bento-inspired control bar) -->
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md mb-xl shadow-[0_4px_12px_rgba(0,0,0,0.02)] flex flex-wrap gap-md items-center justify-between">
+<div class="flex flex-wrap gap-md items-center w-full md:w-auto">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-outline" data-icon="filter_list">filter_list</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Filtros:</span>
+</div>
+<!-- Category Filter -->
+<div class="relative group">
+<select class="appearance-none bg-surface-container-low border border-transparent hover:border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl font-label-sm text-label-sm text-on-surface cursor-pointer transition-colors outline-none w-full md:w-auto">
+<option value="all">Todas as Categorias</option>
+<option value="health">Saúde</option>
+<option value="food">Alimentação</option>
+<option value="education">Educação</option>
+<option value="infra">Infraestrutura</option>
+</select>
+<span class="material-symbols-outlined absolute right-sm top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm" data-icon="expand_more">expand_more</span>
+</div>
+<!-- Priority Filter -->
+<div class="relative group">
+<select class="appearance-none bg-surface-container-low border border-transparent hover:border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl font-label-sm text-label-sm text-on-surface cursor-pointer transition-colors outline-none w-full md:w-auto">
+<option value="all">Qualquer Prioridade</option>
+<option value="urgent">Urgente</option>
+<option value="medium">Média</option>
+<option value="low">Baixa</option>
+</select>
+<span class="material-symbols-outlined absolute right-sm top-1/2 -translate-y-1/2 pointer-events-none text-outline text-sm" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+<!-- Search / View toggle -->
+<div class="relative w-full md:w-64">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-xl pr-md font-body-base text-body-base text-on-surface placeholder:text-outline outline-none transition-colors" placeholder="Buscar projeto..." type="text"/>
+</div>
+</div>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+<!-- Card 1: Urgent Health -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col group hover:shadow-[0_12px_24px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300">
+<div class="relative h-48 w-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A focused, modern documentary-style photograph showing medical supplies and a stethoscope resting on a wooden table in a bright, clean clinic setting. The lighting is soft and natural, emphasizing hope and care. The color palette features deep greens, crisp whites, and warm earthy wood tones, perfectly aligning with a calm, institutional, and trustworthy non-profit aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcYXLLeGHNqSNpNafDPEU7WRVkZMi7-n5DiyR5G7UR2D8P-qpwth3VdBjVCSlQ4WZ7w-LmGgNXWmRtnX9nl_3wYk9H-4k0Wk_FWxUqB7jh_1gXNSFJxgYrGvBmbSNO-MnJ3Xoq4Fzsi0MC3SlH6LG7eU6szxqqJyDxxo9lYkldDuZCyrZe0An8IUnBM9Gmx1DoT5zE96CObSpxH1T2djJ3PSGV6CkUwa6xvYGDNjm2HIBFQgyAtik7mYAdBP7eBQgF1F-W1DTRgM0"/>
+<div class="absolute top-md right-md bg-error-container text-on-error-container font-label-sm text-label-sm px-sm py-xs rounded-full flex items-center gap-xs shadow-sm backdrop-blur-sm bg-opacity-90">
+<span class="material-symbols-outlined text-[16px]" data-icon="priority_high">priority_high</span>
+            Urgente
+          </div>
+<div class="absolute top-md left-md bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface font-label-sm text-label-sm px-sm py-xs rounded-full shadow-sm">
+            Saúde
+          </div>
+</div>
+<div class="p-md flex-grow flex flex-col border-l-4 border-error">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs line-clamp-1">Barco Hospital Sal da Terra</h3>
+<p class="font-body-base text-body-base text-on-surface-variant mb-md line-clamp-2 flex-grow">Combustível e suprimentos médicos para expedição de 15 dias atendendo 4 comunidades isoladas no Rio Solimões.</p>
+<div class="mt-auto space-y-sm">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-secondary font-semibold">85% Financiado</span>
+<span class="text-on-surface-variant">R$ 42.500 / R$ 50.000</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 85%;"></div>
+</div>
+<button class="w-full mt-md bg-primary-container text-on-primary font-label-sm text-label-sm py-sm rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="volunteer_activism">volunteer_activism</span>
+              Doar Agora
+            </button>
+</div>
+</div>
+</article>
+<!-- Card 2: Food -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col group hover:shadow-[0_12px_24px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300">
+<div class="relative h-48 w-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A bright, minimalist photograph of fresh, locally sourced root vegetables and grains arranged neatly in woven baskets. The composition is clean and modern, lit by soft morning sunlight that creates gentle shadows. The color palette focuses on warm earthy neutrals, crisp whites, and subtle green accents, reflecting a calm, trustworthy, and organic non-profit visual identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaevsahJYp-7nt-eliNX_Bld-sJ_PahTdr1ZOipMRP-ygbSAO4qS1uCiVc8IZoffp9zdr4AbvzlDE6VeExmcTHE6gwsaXPy1Y4S8sHqWd9mYV8M2d7OqGn4z60rsX3KqUWLedQ1kav01cYS6zOP0kobIlLxVxEwaVY3NMoc6Bul6X7fpJ4Giv6kFfKQREFbdldejXmAHW269_U-92LpPKogrxArLmE-CNb78DXOtTTcvBkmx_1y_5PZ_E7TEQ5Jt0PqflTfWHOVkI"/>
+<div class="absolute top-md right-md bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-sm py-xs rounded-full flex items-center gap-xs shadow-sm backdrop-blur-sm bg-opacity-90">
+            Média
+          </div>
+<div class="absolute top-md left-md bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface font-label-sm text-label-sm px-sm py-xs rounded-full shadow-sm">
+            Alimentação
+          </div>
+</div>
+<div class="p-md flex-grow flex flex-col border-l-4 border-secondary">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs line-clamp-1">Cestas Básicas Mensais</h3>
+<p class="font-body-base text-body-base text-on-surface-variant mb-md line-clamp-2 flex-grow">Garantia de segurança alimentar para 200 famílias cadastradas durante o período de cheia dos rios.</p>
+<div class="mt-auto space-y-sm">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-secondary font-semibold">40% Financiado</span>
+<span class="text-on-surface-variant">R$ 12.000 / R$ 30.000</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 40%;"></div>
+</div>
+<button class="w-full mt-md bg-primary-container text-on-primary font-label-sm text-label-sm py-sm rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="volunteer_activism">volunteer_activism</span>
+              Doar Agora
+            </button>
+</div>
+</div>
+</article>
+<!-- Card 3: Education -->
+<article class="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-[0_4px_12px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col group hover:shadow-[0_12px_24px_rgba(0,0,0,0.05)] hover:-translate-y-1 transition-all duration-300">
+<div class="relative h-48 w-full overflow-hidden bg-surface-variant">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A clean, inspiring image of new notebooks, pencils, and a tablet resting on a simple wooden school desk. The lighting is bright and high-key, creating a modern, hopeful atmosphere. The color palette utilizes crisp whites, deep amazon greens, and warm neutral tones, ensuring the visual perfectly matches a sophisticated, minimalist non-profit aesthetic focused on education." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACUJQRqACsZHL0Za7JJeg18W-FBQy9dTeliLQ_o63WIOTKxoQbJWREfiWDCQ0X1yh-YT9e82eN3wUkXzO2ffbIlNoTmGPqZWj-u6FBkF9FVZ2L_8OZvD0XN8RWuzsQG7fDfLxzD_axTLezrG0Z2oWq0M6Vp88iw0wG0bYsVlq62FORoOgPm5N0iH1uE8uoPRP-rN8aPHxIuRTDTj8n0ml9SmRyXHuUxtz0CLCGLu0nk4l8mZropwAPaAW9MPJS3dh0zoF5ayA84vk"/>
+<div class="absolute top-md right-md bg-secondary-container text-on-secondary-container font-label-sm text-label-sm px-sm py-xs rounded-full flex items-center gap-xs shadow-sm backdrop-blur-sm bg-opacity-90">
+            Média
+          </div>
+<div class="absolute top-md left-md bg-surface-container-lowest/90 backdrop-blur-sm text-on-surface font-label-sm text-label-sm px-sm py-xs rounded-full shadow-sm">
+            Educação
+          </div>
+</div>
+<div class="p-md flex-grow flex flex-col border-l-4 border-secondary">
+<h3 class="font-h3 text-h3 text-on-surface mb-xs line-clamp-1">Kits Escolares 2024</h3>
+<p class="font-body-base text-body-base text-on-surface-variant mb-md line-clamp-2 flex-grow">Material didático completo para alunos da nova escola construída na comunidade Nova Esperança.</p>
+<div class="mt-auto space-y-sm">
+<div class="flex justify-between font-label-sm text-label-sm">
+<span class="text-secondary font-semibold">62% Financiado</span>
+<span class="text-on-surface-variant">R$ 9.300 / R$ 15.000</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 62%;"></div>
+</div>
+<button class="w-full mt-md bg-primary-container text-on-primary font-label-sm text-label-sm py-sm rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="volunteer_activism">volunteer_activism</span>
+              Doar Agora
+            </button>
+</div>
+</div>
+</article>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-stone-100 dark:bg-stone-900 w-full py-12 mt-auto border-t border-stone-200 dark:border-stone-800">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-8 px-8 max-w-7xl mx-auto">
+<div class="md:col-span-1">
+<div class="font-['Literata'] text-lg font-semibold text-stone-800 dark:text-stone-200 mb-md">Missão Amazônica</div>
+</div>
+<div class="md:col-span-3 flex flex-wrap gap-lg justify-start md:justify-end font-['Nunito_Sans'] text-xs">
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Relatórios</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Privacidade</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Contato</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#4a7c59] dark:hover:text-emerald-400 transition-colors" href="#">Voluntariado</a>
+</div>
+<div class="col-span-1 md:col-span-4 mt-lg pt-lg border-t border-stone-200 dark:border-stone-800 font-['Nunito_Sans'] text-xs text-stone-500 dark:text-stone-400 text-center md:text-left">
+        © 2024 Missão Amazônica – Sal da Terra. CNPJ: 00.000.000/0001-00
+      </div>
+</div>
+</footer>
+</body></html>

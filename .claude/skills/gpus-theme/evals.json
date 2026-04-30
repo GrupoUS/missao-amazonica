@@ -1,0 +1,141 @@
+{
+  "skill": "gpus-theme",
+  "version": "1.1.0",
+  "assertions": [
+    {
+      "id": "A01",
+      "description": "Output references semantic color tokens (--primary, --foreground, --background)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"--primary\", \"--foreground\", \"--background\", \"semantic token\"]",
+      "critical": true
+    },
+    {
+      "id": "A02",
+      "description": "Output does NOT use hardcoded hex values in component code",
+      "type": "behavioral",
+      "check": "not_contains: \"bg-[#\"",
+      "critical": true
+    },
+    {
+      "id": "A03",
+      "description": "Output references Azul Petroleo identity color",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"Petroleo\", \"petroleo\", \"Petr\\u00f3leo\", \"0f4c75\"]",
+      "critical": true
+    },
+    {
+      "id": "A04",
+      "description": "Output references Sovereign Gold identity color",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"Gold\", \"gold\", \"Sovereign\", \"primary\"]",
+      "critical": false
+    },
+    {
+      "id": "A05",
+      "description": "Output covers both light and dark mode token sets",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"dark mode\", \"light mode\", \"dark:\", \".dark\", \"Executive Gilt\", \"GrupoUS\"]",
+      "critical": true
+    },
+    {
+      "id": "A06",
+      "description": "Output references Tailwind CSS v4 or @utility for custom utilities",
+      "type": "structural",
+      "check": "contains_one_of: [\"Tailwind\", \"tailwind\", \"@utility\", \"index.css\"]",
+      "critical": false
+    },
+    {
+      "id": "A07",
+      "description": "Output references shadcn/ui component system",
+      "type": "structural",
+      "check": "contains_one_of: [\"shadcn\", \"components.json\", \"ui/\"]",
+      "critical": false
+    },
+    {
+      "id": "A08",
+      "description": "Output length is under 600 words for focused responses",
+      "type": "format",
+      "check": "word_count_max: 600",
+      "critical": false
+    },
+    {
+      "id": "A09",
+      "description": "Output does NOT use purple/violet/indigo as primary or brand color",
+      "type": "behavioral",
+      "check": "not_contains_one_of: [\"bg-purple\", \"bg-violet\", \"bg-indigo\", \"purple-500\", \"violet-500\", \"indigo-500\", \"purple gradient\"]",
+      "critical": true
+    },
+    {
+      "id": "A10",
+      "description": "Output references anti-slop philosophy, forbidden defaults, or Template Test",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"anti-slop\", \"forbidden default\", \"Template Test\", \"AI slop\", \"Ten Forbidden\", \"Forbidden Default\"]",
+      "critical": false
+    },
+    {
+      "id": "A11",
+      "description": "Output avoids recommending standard 50/50 hero split layout",
+      "type": "behavioral",
+      "check": "not_contains_one_of: [\"grid-cols-2 ... text ... image\", \"left text, right image\", \"50/50 layout\"]",
+      "critical": false
+    },
+    {
+      "id": "A12",
+      "description": "Output includes prefers-reduced-motion when animation code is present",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"prefers-reduced-motion\", \"motion-reduce\", \"reduced-motion\"]",
+      "critical": true
+    },
+    {
+      "id": "A13",
+      "description": "Output does NOT use tiny body text sizes (10-12px)",
+      "type": "behavioral",
+      "check": "not_contains_one_of: [\"text-[10px]\", \"text-[11px]\", \"text-[12px]\", \"font-size: 10px\", \"font-size: 12px\"]",
+      "critical": false
+    },
+    {
+      "id": "A14",
+      "description": "Output references alternative layouts when designing hero or landing page sections",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"Typographic Hero\", \"asymmetry\", \"90/10\", \"Layered Depth\", \"Center-Stagger\", \"Vertical Narrative\"]",
+      "critical": false
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "T01",
+      "input": "How do I apply the GPUS brand colors to a new component in the NeonDash project?",
+      "expected_assertions": ["A01", "A02", "A03", "A06", "A07", "A08"]
+    },
+    {
+      "id": "T02",
+      "input": "What are the correct dark mode token values for the Sovereign Architect design system?",
+      "expected_assertions": ["A01", "A03", "A04", "A05", "A08"]
+    },
+    {
+      "id": "T03",
+      "input": "I need to create a custom utility color for a new section. How should I define it without using hardcoded hex?",
+      "expected_assertions": ["A01", "A02", "A06", "A08"]
+    },
+    {
+      "id": "T04",
+      "input": "Full theme setup: apply the complete GPUS Sovereign Architect design system to a new project with light/dark mode, shadcn config, and Tailwind v4 tokens.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A07"]
+    },
+    {
+      "id": "T05",
+      "input": "Design a hero section for the GPUS landing page. Make it look modern and professional.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A09", "A10", "A11", "A14"]
+    },
+    {
+      "id": "T06",
+      "input": "Create an AI chat interface component for the Neondash Gemini integration with loading states and skeleton loaders.",
+      "expected_assertions": ["A01", "A02", "A05", "A10", "A12"]
+    },
+    {
+      "id": "T07",
+      "input": "I want to build a new dashboard card with a purple gradient background and a glassmorphism effect.",
+      "expected_assertions": ["A01", "A02", "A03", "A09", "A10"]
+    }
+  ]
+}

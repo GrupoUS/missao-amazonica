@@ -1,0 +1,103 @@
+{
+  "skill": "drizzle-neon-clerk-auth",
+  "version": "1.2.0",
+  "assertions": [
+    {
+      "id": "A01",
+      "description": "Output mentions Stripe Checkout reconciliation via client_reference_id",
+      "type": "stripe",
+      "check": "contains: \"client_reference_id\"",
+      "critical": true
+    },
+    {
+      "id": "A02",
+      "description": "Output distinguishes Checkout metadata from subscription_data.metadata",
+      "type": "stripe",
+      "check": "contains: \"subscription_data.metadata\"",
+      "critical": true
+    },
+    {
+      "id": "A03",
+      "description": "Output covers webhook deduplication or duplicate-event handling",
+      "type": "stripe",
+      "check": "contains_one_of: [\"event.id\", \"duplicate\", \"dedupe\", \"idempot\"]",
+      "critical": true
+    },
+    {
+      "id": "A04",
+      "description": "Output explains user-billed versus tenant-billed separation",
+      "type": "multitenancy",
+      "check": "contains_one_of: [\"user-billed\", \"tenant-billed\", \"workspace subscription\", \"billing owner\"]",
+      "critical": true
+    },
+    {
+      "id": "A05",
+      "description": "Output mentions Stripe Entitlements or entitlement projection",
+      "type": "stripe",
+      "check": "contains_one_of: [\"Entitlements\", \"entitlements\", \"entitlement\"]",
+      "critical": false
+    },
+    {
+      "id": "A06",
+      "description": "Output mentions stripeAccountId for multi-account or multi-entity setups",
+      "type": "multitenancy",
+      "check": "contains_one_of: [\"stripeAccountId\", \"stripe_account_id\", \"Stripe account ID\"]",
+      "critical": true
+    },
+    {
+      "id": "A07",
+      "description": "Output does not claim every SaaS must use one Stripe customer per user",
+      "type": "safety",
+      "check": "not_contains: \"always create one Stripe customer per user\"",
+      "critical": true
+    },
+    {
+      "id": "A08",
+      "description": "Output stays focused enough for operator use",
+      "type": "format",
+      "check": "word_count_max: 900",
+      "critical": false
+    },
+    {
+      "id": "A09",
+      "description": "Output mentions shared resolver updates for new price IDs or billing intervals",
+      "type": "repo",
+      "check": "contains_one_of: [\"getPriceEnvKey\", \"resolvePlanSelectionFromPriceId\", \"billingIntervalFromPriceId\"]",
+      "critical": true
+    },
+    {
+      "id": "A10",
+      "description": "Output says new recurring prices should be created instead of mutating an existing amount in place",
+      "type": "stripe",
+      "check": "contains_one_of: [\"create a new Price\", \"new Price\", \"archive the old price\", \"legacy price\", \"lookup_key\"]",
+      "critical": true
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "T01",
+      "input": "We use Stripe Checkout in NeonDash. How should I map client_reference_id, metadata, and subscription_data.metadata so the webhook can reconcile the right user or tenant?",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A08"]
+    },
+    {
+      "id": "T02",
+      "input": "Should our SaaS create one Stripe customer per user or one per clinic workspace? Explain user-billed vs tenant-billed and how that affects Drizzle data modeling.",
+      "expected_assertions": ["A01", "A04", "A05", "A07", "A08"]
+    },
+    {
+      "id": "T03",
+      "input": "We may bill different legal entities in separate Stripe accounts. What should NeonDash persist to avoid mixing subscriptions and entitlements across accounts?",
+      "expected_assertions": ["A03", "A05", "A06", "A07", "A08"]
+    },
+    {
+      "id": "T04",
+      "input": "I need to add an annual Stripe price to NeonDash and keep webhook interval detection working. What shared resolver and catalog rules do I need to update?",
+      "expected_assertions": ["A03", "A08", "A09", "A10"]
+    },
+    {
+      "id": "T05",
+      "input": "The Pro monthly amount changed. Should I edit the existing Stripe recurring price or create a new one, and how should NeonDash treat the old price for existing subscribers?",
+      "expected_assertions": ["A08", "A10"]
+    }
+  ]
+}

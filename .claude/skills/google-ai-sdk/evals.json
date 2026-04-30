@@ -1,0 +1,91 @@
+{
+  "skill": "google-ai-sdk",
+  "version": "1.0.0",
+  "assertions": [
+    {
+      "id": "A01",
+      "description": "Output references aiProvider.ts as the central provider module",
+      "type": "structural",
+      "check": "contains: \"aiProvider.ts\"",
+      "critical": true
+    },
+    {
+      "id": "A02",
+      "description": "Output uses Vercel AI SDK functions for text generation (generateText, streamText, generateObject)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"generateText\", \"streamText\", \"generateObject\"]",
+      "critical": true
+    },
+    {
+      "id": "A03",
+      "description": "Output does NOT suggest @google/genai for text generation (it is for image generation only)",
+      "type": "behavioral",
+      "check": "not_contains: \"GoogleGenAI().models.generateContent\"",
+      "critical": true
+    },
+    {
+      "id": "A04",
+      "description": "Output references Zod for structured output schemas",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"Zod\", \"zod\", \"z.object\", \"zodSchema\"]",
+      "critical": false
+    },
+    {
+      "id": "A05",
+      "description": "Output references correct model identifiers (gemini-3-flash-preview)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"gemini-3-flash\", \"defaultModel\", \"proModel\"]",
+      "critical": false
+    },
+    {
+      "id": "A06",
+      "description": "Output references @ai-sdk/google as the provider adapter",
+      "type": "structural",
+      "check": "contains: \"@ai-sdk/google\"",
+      "critical": true
+    },
+    {
+      "id": "A07",
+      "description": "Output does NOT suggest OpenAI SDK for this project",
+      "type": "behavioral",
+      "check": "not_contains: \"openai\"",
+      "critical": true
+    },
+    {
+      "id": "A08",
+      "description": "Output references tool() for multi-step agent tasks when applicable",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"tool(\", \"tool calling\", \"stopWhen\", \"stepCountIs\"]",
+      "critical": false
+    },
+    {
+      "id": "A09",
+      "description": "Output length is under 600 words for focused responses",
+      "type": "format",
+      "check": "word_count_max: 600",
+      "critical": false
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "T01",
+      "input": "How should I implement AI text generation for analyzing mentorado metrics in this project?",
+      "expected_assertions": ["A01", "A02", "A03", "A06", "A07", "A09"]
+    },
+    {
+      "id": "T02",
+      "input": "I need to generate images using Gemini. Which SDK and model should I use?",
+      "expected_assertions": ["A01", "A05", "A06", "A07", "A09"]
+    },
+    {
+      "id": "T03",
+      "input": "How do I extract structured JSON data from AI responses using Zod schemas?",
+      "expected_assertions": ["A01", "A02", "A04", "A06", "A07", "A09"]
+    },
+    {
+      "id": "T04",
+      "input": "Full integration: implement a multi-step AI agent with tool calling, structured output, and streaming in the NeonDash project.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09"]
+    }
+  ]
+}

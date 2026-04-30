@@ -1,0 +1,153 @@
+{
+  "skill": "planning",
+  "version": "3.0.0",
+  "assertions": [
+    {
+      "id": "A01",
+      "description": "Output follows D.R.P.I.V methodology (Discover, Research, Plan, Implement, Validate)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"D.R.P.I.V\", \"DISCOVER\", \"RESEARCH\", \"Discover\", \"Research\"]",
+      "critical": true
+    },
+    {
+      "id": "A02",
+      "description": "Output enforces the HARD GATE — no code before design approval",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"HARD GATE\", \"no code\", \"approval\", \"user approval\", \"design approval\"]",
+      "critical": true
+    },
+    {
+      "id": "A03",
+      "description": "Output does NOT jump to implementation without a plan",
+      "type": "behavioral",
+      "check": "not_contains: \"let me implement\"",
+      "critical": true
+    },
+    {
+      "id": "A04",
+      "description": "Output proposes multiple approaches with trade-offs",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"trade-off\", \"approach\", \"alternative\", \"option\", \"pros\", \"cons\"]",
+      "critical": false
+    },
+    {
+      "id": "A05",
+      "description": "Output references structured research with confidence scoring or named research tools",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"confidence\", \"Confidence\", \"Research\", \"research cascade\", \"finding\", \"Tavily\", \"Context7\", \"codebase\"]",
+      "critical": true
+    },
+    {
+      "id": "A06",
+      "description": "Output asks clarifying questions or explicitly requests user approval before proceeding",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"clarify\", \"approve\", \"approval\", \"confirm\", \"What is\", \"Which\", \"Do you\", \"Should we\"]",
+      "critical": false
+    },
+    {
+      "id": "A07",
+      "description": "Output references complexity routing (L1-L8 levels)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"L1\", \"L2\", \"L3\", \"L4\", \"L5\", \"complexity\"]",
+      "critical": false
+    },
+    {
+      "id": "A08",
+      "description": "Output length is under 700 words for focused responses",
+      "type": "format",
+      "check": "word_count_max: 700",
+      "critical": false
+    },
+    {
+      "id": "A09",
+      "description": "Output references sprint contracts or acceptance criteria when planning L4+ features",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"sprint contract\", \"Sprint Contract\", \"contract\", \"acceptance criteria\", \"Acceptance Criteria\", \"done definition\", \"deliverables\"]",
+      "critical": true
+    },
+    {
+      "id": "A10",
+      "description": "Output separates planning from evaluation (GEL pattern) — references evaluator, review, or adversarial check",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"evaluator\", \"Evaluator\", \"adversarial\", \"scoring threshold\", \"GEL\", \"Evaluator Gate\", \"review\"]",
+      "critical": true
+    },
+    {
+      "id": "A11",
+      "description": "Output references context management or artifact handoffs for long planning sessions",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"context reset\", \"handoff\", \"artifact\", \"checkpoint\", \"context management\", \"HANDOFF\"]",
+      "critical": false
+    },
+    {
+      "id": "A12",
+      "description": "Output does NOT contain implementation code blocks in the planning response itself",
+      "type": "behavioral",
+      "check": "not_contains: \"export function\"",
+      "critical": false
+    },
+    {
+      "id": "A13",
+      "description": "Output references the 3-agent GAN harness (Planner + Generator + Evaluator as distinct roles)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"GAN harness\", \"3-agent\", \"three-agent\", \"Generator\", \"generator\", \"Planner\", \"planner\", \"WHAT not HOW\", \"WHAT, not HOW\"]",
+      "critical": true
+    },
+    {
+      "id": "A14",
+      "description": "Output references evaluator calibration — skeptical behavior, few-shot examples, or specific failure criteria",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"calibrat\", \"skeptical\", \"few-shot\", \"FAILED\", \"REPROVED\", \"Product Depth\", \"Functionality\", \"Visual Design\", \"Code Quality\", \"threshold\"]",
+      "critical": false
+    },
+    {
+      "id": "A15",
+      "description": "Output references model-aware context management (Sonnet vs Opus or context anxiety)",
+      "type": "behavioral",
+      "check": "contains_one_of: [\"Sonnet\", \"Opus\", \"context anxiety\", \"context reset\", \"auto-compaction\", \"handoff artifact\"]",
+      "critical": false
+    }
+  ],
+  "test_cases": [
+    {
+      "id": "T01",
+      "input": "I want to add a new patient billing module to NeonDash. How should we plan this?",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A08"]
+    },
+    {
+      "id": "T02",
+      "input": "Plan the implementation of a real-time notification system using WebSockets.",
+      "expected_assertions": ["A01", "A02", "A03", "A05", "A06", "A07", "A08"]
+    },
+    {
+      "id": "T03",
+      "input": "We need to migrate the auth system from Clerk to a custom JWT solution. Create a plan.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A07", "A08"]
+    },
+    {
+      "id": "T04",
+      "input": "Full planning exercise: design a multi-tenant analytics dashboard with role-based access, real-time data, and AI insights.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A09", "A10", "A13"]
+    },
+    {
+      "id": "T05",
+      "input": "Quick, I need to add a simple CSV export button to the /financeiro page. Just do it, no need to plan.",
+      "expected_assertions": ["A01", "A02", "A03", "A05"]
+    },
+    {
+      "id": "T06",
+      "input": "Plan an integration with the Meta Business API for WhatsApp message scheduling with queue management, rate limiting, and webhook delivery confirmations across multiple tenants.",
+      "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A07", "A09", "A10", "A13"]
+    },
+    {
+      "id": "T07",
+      "input": "We've been planning this for a while and the context is getting long. How should we handle the transition to implementation for this multi-sprint migration plan?",
+      "expected_assertions": ["A01", "A09", "A10", "A11", "A15"]
+    },
+    {
+      "id": "T08",
+      "input": "The evaluator keeps approving work that is clearly incomplete. How should we fix that?",
+      "expected_assertions": ["A10", "A13", "A14"]
+    }
+  ]
+}

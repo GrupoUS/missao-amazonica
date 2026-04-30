@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+bun.lockb
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.astro/
+.vercel/
+.output/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Supabase
+supabase/.temp/
+supabase/.branches/
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun-debug.log*
+.claude/logs/
+
+# Coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo

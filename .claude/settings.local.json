@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(awk *)",
+      "Bash(tail *)",
+      "Bash(test *)",
+      "WebFetch(domain:staging.neondash.com.br)",
+      "WebFetch(domain:nixpacks.com)",
+      "WebFetch(domain:github.com)",
+      "WebSearch",
+      "mcp__claude_ai_Context7__resolve-library-id",
+      "mcp__tavily__search",
+      "mcp__claude_ai_Context7__query-docs",
+      "WebFetch(domain:www.googleapis.com)",
+      "Skill(optimize-bundle-size)",
+      "Skill(optimize-memory-usage)",
+      "Bash(rm \"D:/Coders/neondash/.claude/agents/oracle.md\")",
+      "Bash(rm \"D:/Coders/neondash/.claude/hooks/oracle_escalation.py\")",
+      "Bash(grep -rn oracle D:/Coders/neondash/.claude/ --include=*.md --include=*.py --include=*.json)",
+      "WebFetch(domain:www.anthropic.com)",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Skill(optimize-database-performance)",
+      "Skill(codex:rescue)"
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python \"$CLAUDE_PROJECT_DIR\"/.claude/scripts/context-monitor.py"
+  }
+}
