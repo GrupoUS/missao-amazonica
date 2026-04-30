@@ -37,6 +37,9 @@ yarn-debug.log*
 yarn-error.log*
 bun-debug.log*
 .claude/logs/
+.claude/docs/evolution/.current_session
+.claude/docs/evolution/*.db
+.claude/docs/evolution/*.jsonl
 
 # Coverage
 coverage/

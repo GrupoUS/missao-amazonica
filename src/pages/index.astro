@@ -202,6 +202,7 @@ const reserveCents = Number(stats?.reserve_cents ?? 0);
             width={760}
             height={570}
             loading="lazy"
+            fetchpriority="low"
             class="relative w-full aspect-[4/3] object-cover rounded-3xl border border-outline-variant/30 shadow-card"
           />
           <div class="absolute bottom-md left-md right-md bg-primary/85 text-on-primary px-md py-sm rounded-2xl border border-on-primary/10 backdrop-blur-sm">

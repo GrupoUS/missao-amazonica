@@ -8,7 +8,8 @@ interface Props {
   showCaption?: boolean;
 }
 
-const { categorySlug, itemSlug, showCaption = true } = Astro.props;
+const props = Astro.props as Props;
+const { categorySlug, itemSlug, showCaption = true } = props;
 
 interface Palette {
   gradient: string;
@@ -72,6 +73,9 @@ const fallback: Palette = {
 const slug = (categorySlug ?? '').toLowerCase();
 const palette = palettes[slug] ?? fallback;
 const finalIcon: IconName = (itemSlug ? itemIconOverride[itemSlug] : undefined) ?? palette.icon;
+// Unique-per-card pattern id — combines category + item slug + random nonce so
+// repeated categories on the same page don't share DOM IDs.
+const patternId = `dots-${slug || 'default'}-${itemSlug ?? 'x'}-${Math.random().toString(36).slice(2, 8)}`;
 ---
 
 <div
@@ -88,11 +92,11 @@ const finalIcon: IconName = (itemSlug ? itemIconOverride[itemSlug] : undefined) 
     aria-hidden="true"
   >
     <defs>
-      <pattern id={`dots-${slug || 'default'}`} x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+      <pattern id={patternId} x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
         <circle cx="2" cy="2" r="1.4" fill="currentColor" />
       </pattern>
     </defs>
-    <rect width="100%" height="100%" fill={`url(#dots-${slug || 'default'})`} />
+    <rect width="100%" height="100%" fill={`url(#${patternId})`} />
   </svg>
 
   <span aria-hidden="true" class:list={['relative z-10 flex items-center justify-center', palette.iconTint]}>

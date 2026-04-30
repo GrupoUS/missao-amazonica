@@ -4,6 +4,8 @@ import Icon from '@/components/ui/Icon.astro';
 
 export const prerender = false;
 
+Astro.response.headers.set('Cache-Control', 'no-store');
+
 let formError: string | null = null;
 let formEmail = '';
 
@@ -129,7 +131,7 @@ const resetSent = url.searchParams.get('reset') === 'sent';
             </p>
 
             {resetSent && (
-              <div role="status" class="bg-secondary-container/40 text-on-secondary-container px-md py-sm rounded-lg type-label mb-md flex items-start gap-2">
+              <div role="status" aria-live="polite" class="bg-secondary-container/40 text-on-secondary-container px-md py-sm rounded-lg type-label mb-md flex items-start gap-2">
                 <Icon name="check_circle" size={16} class="mt-0.5 shrink-0" />
                 <span>Se a conta existir, enviamos um link de recuperação. Confira sua caixa de entrada.</span>
               </div>
@@ -274,7 +276,7 @@ const resetSent = url.searchParams.get('reset') === 'sent';
           ev.preventDefault();
           var email = (document.getElementById('forgot-email') || {}).value || '';
           status.innerHTML = '<span class="type-caption text-on-surface-variant">Enviando…</span>';
-          fetch('/api/admin/auth/forgot', {
+          fetch('/api/auth/forgot', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })

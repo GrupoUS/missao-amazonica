@@ -100,7 +100,7 @@ Esta é a "imagem criada" para os slots sem foto: composição programática (gr
 
 Substituir grid 4-col por layout 2-col enxuto:
 
-```
+```text
 [brand + 1 linha de descrição curta]   [Plataforma: links]
 [© 2026 · CNPJ N/D ou removido]
 ```
@@ -145,7 +145,7 @@ Texto agora dentro de bloco `<p>` em container com largura definida — não há
 
 Substituir card decorativo por `<img>` apontando para `/images/mission/section-cuidado-criancas.jpg` (missionária com 2 crianças). Mesmo padrão da Hero — aspect-4/3, border outline-variant/30, overlay legenda inferior:
 
-```
+```text
 "Cuidado humano · Cada criança importa."
 ```
 
@@ -184,7 +184,7 @@ Adicionar `w-full` no inner wrapper:
 
 Layout 2-col em desktop, stack em mobile:
 
-```
+```text
 ┌──────────────────┬───────────────────────┐
 │   Brand panel    │   Form panel          │
 │   (foto 03)      │   - Logo Missão       │
