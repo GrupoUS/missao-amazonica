@@ -1,105 +1,91 @@
 ---
-globs: apps/**
+globs: src/**, supabase/**
 ---
 
 # Stability Audit Checklist (Tier 2 — Auto-loaded)
 
-> Compact stability guardrails for any `apps/` change.
-> Keep this file short. Load deeper references only when the task needs them.
+> Compact universal stability guardrails. Domain-specific detail lives in domain rule files.
 
 ## Purpose
 
-This rule exists to provide the **minimum always-useful stability checks** without forcing large historical or domain-specific context into every task.
-
-Use this file as:
-- the default safety checklist for app changes
-- a routing layer to deeper references when the bug is non-trivial
-- a reminder to validate after every modification
-
-Do **not** expand this file into a handbook. Detailed examples and historical bug families belong in domain references.
+Provide the minimum always-useful stability checks for any change in this repo, plus pointers to deeper references when the issue is non-trivial.
 
 ---
 
-## Core Checklist (A-L)
+## Core Checklist (A–L)
 
-- **A — Barrel Exports**: Every export must exist in its barrel `index.ts`. Missing re-exports can cause runtime crashes.
-- **B — No `!` Assertions**: Never use non-null assertion `!` on optional data. Use `??`, guards, or `?.`.
-- **C — Array Guards**: Always guard `.returning()` / `.select()` results against empty arrays before access. For arrays of objects with optional fields (e.g. `Array<{ url?: string }>`), validate the **content** of each element (`some(e => Boolean(e.url || e.b64Json))`), not just `array.length > 0` — `[{ url: undefined }]` has length 1.
-- **D — Auth Procedures**: Use the correct procedure level (`adminProcedure`, `mentoradoProcedure`, etc.). Never emulate role checks manually in generic protected flows.
-- **E — Error Handlers**: Server entry points must have `uncaughtException` and `unhandledRejection` handling.
-- **F — Env Config**: Never default production-required variables to localhost or fake values. Fail fast.
-- **G — CORS**: Never use wildcard CORS in production. Use explicit origins with `credentials: true` when required.
-- **H — No `console.log`**: Use the project logger in production code. Backend canonical: `createLogger({ service })` from `apps/api/src/_core/logger.ts`. Declare a module-level `logger` immediately after imports in any new service file.
-- **I — No `as any` / `as string` / `as number` over possibly-undefined**: Prefer real types, narrowing, or precise assertions. `Boolean(x)` does NOT propagate type narrowing across closures — alias the value into a `const` and guard it (`const v = x; if (!v) return;`) instead of casting downstream.
-- **J — Mutation Errors**: Always wrap async mutations in error handling with user-facing feedback where applicable.
-- **K — No Dead Anchors**: Never use `href="#"` for actions. Use buttons for actions and real links for navigation.
-- **L — Error Boundaries**: Never expose stack traces in production UI. Show safe generic messaging.
+- **A — Barrel exports.** When adding to a `src/lib/<domain>/index.ts`, confirm every new export is re-exported. Missing re-exports cause runtime failures inside dynamic imports.
+- **B — No `!` assertions.** Never use a non-null assertion on optional Supabase results, env vars, or query results. Use `??`, type guards, or early returns.
+- **C — Array guards.** Always guard `.select()` / `.insert().select().single()` results against empty / error before destructuring. With `.single()`, check `error` and `data` separately. With arrays of objects with optional fields, validate **content**, not just `length`.
+- **D — Render mode.** Every `src/pages/**` file declares `export const prerender = true|false` correctly. `/api/**` and `/admin/**` are always `false`. Public pages are `true`.
+- **E — Error handlers.** Server entry points (`src/middleware.ts`, webhook handlers) wrap top-level work in try/catch + `Sentry.captureException`. Process-level handlers are configured via `@sentry/astro`.
+- **F — Env config.** Never default a production-required variable to localhost or a fake value. Fail fast with a clear error on first read in production.
+- **G — CORS.** API routes return only the headers they need. No wildcard `Access-Control-Allow-Origin`. The webhook is unauthenticated by HMAC, not by CORS.
+- **H — No `console.log`.** Use `Sentry.captureException` / `captureMessage`. Allow `console.warn` only inside the Resend/Sentry no-op fallbacks where the wrapper purposefully degrades.
+- **I — No `as any`.** Generate types via `bunx supabase gen types`. Use `unknown` + Zod parse at boundaries.
+- **J — Mutation errors.** Every form island wraps `fetch` in try/catch with a user-facing toast. Never silently swallow.
+- **K — No dead anchors.** Never `href="#"`. Use `<button>` for actions. Use real `<a href="...">` for navigation.
+- **L — Error boundaries.** Production UI never exposes a stack trace. The 500 page shows generic copy and a contact CTA.
 
 ---
 
-## Selective Loading Guidance
+## Idempotency
 
-Load deeper context only when needed:
+| Surface | Pattern |
+|---|---|
+| `/api/webhooks/bank-pix.ts` | `payment_events` unique on `(provider, bank_end_to_end_id)`; insert `on conflict do nothing returning id`; skip downstream when no row |
+| Manual confirm | Synthetic `bank_end_to_end_id = 'MAN-' || intent_id`; same uniqueness path |
+| Admin re-publish | No state machine regression — `donation_items.status` transitions logged in `audit_logs` |
 
-| Situation | Load Next |
-|----------|-----------|
-| Backend runtime bug, tRPC issue, service logic, auth flow | `.claude/rules/backend.md` |
-| Schema, Drizzle, table design, FK/index questions | `.claude/rules/database.md` |
-| Frontend rendering, UI state, React interaction bugs | `.claude/rules/frontend.md` |
-| External provider/webhook/integration behavior | `.claude/rules/integrations.md` |
-| Multi-domain architecture or operational context | `.claude/docs/architecture/README.md` |
-| Backend bug history / tenant resolution / aggregation pitfalls | `.claude/docs/architecture/13-backend-learnings.md` |
-| UI foundations / layout / design language | `.claude/docs/design-specs/00-design-system-foundation.md` |
-| Frontend bug history / polling / memoization / hot-list patterns | `.claude/docs/design-specs/00-frontend-learnings.md` |
+---
 
-### Load Order
+## Performance Gates
 
-Prefer this progression:
+| Layer | Threshold |
+|---|---|
+| Lighthouse Perf / A11y / BP / SEO | ≥ 95 on `/`, `/doar`, `/prestacao-de-contas` |
+| LCP | < 2.5s |
+| CLS | 0 |
+| INP | < 100ms |
+| Initial JS on prerendered pages | < 50KB |
 
-1. Root `AGENTS.md`
-2. This compact stability rule
-3. Domain rule(s) that match the task
-4. Focused Tier 3 reference docs only if the task needs deeper context
-5. Subdirectory `AGENTS.md` only when editing in that domain
+---
 
-This keeps context lean while preserving correctness.
+## Verification After Changes
+
+| Surface changed | Verification |
+|---|---|
+| `src/pages/api/**` | `bunx astro check`; curl smoke; check `Sentry.captureMessage` shows up |
+| `src/pages/**` (public) | `bun run dev`; visual smoke + mobile breakpoints |
+| `supabase/migrations/**` | `bunx supabase db lint`; `bunx supabase db push`; regenerate types; psql smoke that RLS denies anon |
+| `src/components/**` | `bunx astro check`; visual smoke; Lucide rule grep |
+| `src/styles/global.css` | `bun run build` succeeds; visual diff vs mockup |
+| Webhook | Curl twice → only one confirmation; overage curl → reserve row |
+| Admin mutation | `audit_logs` row appears |
 
 ---
 
 ## Escalation Triggers
 
-Load deeper references before changing code when any of these are true:
+Load deeper context **before** changing code when any of these are true:
 
-- root cause is unclear after initial inspection
-- bug spans frontend + backend or multiple services
-- change affects auth, tenant resolution, or data isolation
-- change affects schema, migrations, or foreign keys
-- issue involves polling, virtualization, memoization, or realtime UI
-- issue involves webhooks, retries, idempotency, or third-party APIs
-- there is a known historical pitfall in the affected domain
+- Root cause unclear after initial inspection
+- Bug spans multiple layers (API + UI + schema)
+- Change affects auth, RLS, or PII
+- Change affects schema, FKs, or RLS policies
+- Issue involves polling / realtime / webhooks / idempotency
+- Two consecutive fix attempts on the same hypothesis failed
 
----
-
-## Verification Rule
-
-Every change must be followed by validation appropriate to the surface changed.
-
-Minimum expectation:
-- type-check relevant changes
-- run lint/format checks as needed
-- run tests when behavior changed
-- verify the actual flow when the bug is runtime or UX related
-
-If the first fix does not hold under verification, revisit the root cause rather than patching symptoms.
+For those cases, prefer reading the appropriate domain rule + the design / PROMPT specs before editing.
 
 ---
 
-## File Design Rule
+## File Design
 
-This file should remain:
-- short
-- operational
-- broadly applicable
-- reference-oriented, not example-heavy
+This file stays short, operational, broadly applicable. Detail lives in:
 
-If you need more than a few lines to explain a pattern, move that detail into the appropriate Tier 3 reference and link it here.
+- `.claude/rules/backend.md`
+- `.claude/rules/database.md`
+- `.claude/rules/frontend.md`
+- `.claude/rules/integrations.md`
+- root `AGENTS.md`

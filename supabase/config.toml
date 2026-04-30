@@ -1,0 +1,64 @@
+# Supabase project configuration for Missão Amazônica – Sal da Terra
+# Docs: https://supabase.com/docs/guides/cli/config
+
+project_id = "missao-amazonica"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:4321"
+additional_redirect_urls = ["http://localhost:4321/admin/login"]
+jwt_expiry = 3600
+enable_signup = false
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = false
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[[storage.buckets]]
+name = "item-images"
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
+
+[[storage.buckets]]
+name = "accountability-proofs"
+public = true
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+
+[[storage.buckets]]
+name = "donor-uploads"
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+
+[realtime]
+enabled = true
+
+[edge_runtime]
+enabled = false
+
+[experimental]
+webhooks = true

@@ -1,106 +1,133 @@
 ---
-globs: apps/api/drizzle/**
+globs: supabase/migrations/**, supabase/seed.sql, supabase/config.toml, src/lib/supabase/types.ts
 ---
 
 # Database Rules (Tier 2 — Auto-loaded)
 
-> Canonical schema authority: `apps/api/drizzle/AGENTS.md`
-> Source of truth: `apps/api/drizzle/schema.ts`
-> Deep references:
-> - `.claude/docs/architecture/11-runtime-environment.md`
-> - `.claude/docs/architecture/12-database-schema-reference.md`
-> - `.claude/docs/architecture/06-data-architecture.md`
+> Source of truth: `supabase/migrations/` (numbered SQL files).
+> Generated types: `src/lib/supabase/types.ts` (regenerate after every schema change).
 
 ## Purpose
 
-This file is intentionally **slim**.
-
-It should give you the minimum safe guardrails for schema work while pushing deep reference material into Tier 3 architecture docs. Load those references only when the task actually needs them.
+Operational guardrails for Supabase schema, migrations, RLS, views, functions, storage policies.
 
 ---
 
-## Load Strategy
+## Migration Discipline
 
-### Load this file for
-- any edit under `apps/api/drizzle/**`
-- schema/table/column/index changes
-- enum changes
-- migration planning
-- DB performance review tied to schema shape
-
-### Also load on demand
-- `apps/api/drizzle/AGENTS.md` — when editing schema or migration files
-- `.claude/docs/architecture/12-database-schema-reference.md` — when you need domain/table orientation
-- `.claude/docs/architecture/11-runtime-environment.md` — when env/runtime/config affects DB work
-- `.claude/docs/architecture/06-data-architecture.md` — when the task is architectural, relational, or cross-domain
-
-### Do not preload
-- full backend references
-- frontend references
-- unrelated design specs
+- One logical change per file. Filename: `NNNN_short_description.sql` (e.g., `0006_add_item_priority.sql`).
+- Make migrations **idempotent** where possible: `create table if not exists`, `create index if not exists`, `do $$ begin … exception when duplicate_object then null; end $$;` for enum-style alterations.
+- Never edit a migration that has been pushed to production. Add a new one.
+- Apply with `bunx supabase db push`. Lint with `bunx supabase db lint`.
+- Regenerate types after every schema change: `bunx supabase gen types typescript --linked > src/lib/supabase/types.ts`.
 
 ---
 
 ## Core Rules
 
-- **Extend first**: prefer adding columns to existing tables before creating new tables when the domain already exists
-- **Every foreign key needs an index** — no exceptions
-- **Enum naming**: `camelCase` TypeScript export, `snake_case` database name
-- **Always export** the row type and insert type for each table
-- **Soft deletes** use domain conventions such as `ativo` where applicable; do not default to physical deletion
-- **Development workflow**: use `bun run db:push` for schema propagation; avoid manual SQL as the default path
-- **Keep validation aligned**: enum-backed columns must stay consistent with API validation schemas
-- **Prefer existing domains** over inventing parallel structures for near-duplicate data
+- **Extend first.** Add a column to an existing table before introducing a new table when the domain already exists.
+- **Every foreign key needs an index.** No exceptions. Pattern:
+
+  ```sql
+  alter table donation_items add column category_id uuid references categories(id);
+  create index if not exists donation_items_category_id_idx on donation_items(category_id);
+  ```
+- **Enum-style columns** use `check (col in ('a','b','c'))` rather than `create type` ENUM, so values can be extended via a single `alter table … drop constraint … add constraint …` migration.
+- **All money is integer cents.** Column suffix `_cents`. Never `numeric` for currency.
+- **All timestamps** are `timestamptz default now()`. Never `timestamp` without timezone.
+- **Soft deletion** is preferred for donor-facing tables. Use `archived_at timestamptz` or `status` enum. Hard delete only for clearly transient data.
+- **Always export Row + Insert types** from generated `types.ts`. Custom helpers in `src/lib/supabase/helpers.ts`.
 
 ---
 
-## Change Checklist
+## RLS — Always On
 
-Before changing schema, verify:
+Every table gets `alter table <name> enable row level security;` in the same migration that creates it.
 
-- Which existing domain owns this data?
-- Can the existing table absorb the change?
-- Does every new FK have a matching index?
-- Are enum values mirrored correctly in validation/input layers?
-- Will this affect tenant scoping, reporting, or integrations?
-- Does the change require updates outside Drizzle?
+Policy patterns:
+
+| Audience | Pattern |
+|---|---|
+| Public (anon) read of published items | `create policy "anon read published" on donation_items for select to anon using (status = 'published');` |
+| Public read of public accountability | `create policy "anon read public" on accountability_entries for select to anon using (is_public = true);` |
+| Public anonymous insert (donation intents) | column-level grants + `create policy "anon insert intent" on donation_intents for insert to anon with check (status = 'pending');` |
+| Admin all | `create policy "admin all" on <table> for all to authenticated using (public.is_admin(auth.uid())) with check (public.is_admin(auth.uid()));` |
+
+**Donor PII rule:** never grant `select` on `donation_intents.donor_email` / `donor_phone` to `anon` — even via column-level grants. Public reads go through the `public_donor_list` view, which is `security_invoker = on` and only exposes `donor_name`, `amount_cents`, `confirmed_at`.
+
+---
+
+## Views and Functions
+
+```sql
+-- Always set the security model explicitly.
+create or replace view public_donor_list
+with (security_invoker = on)
+as select item_id, donor_name, amount_cents, confirmed_at
+   from donation_intents
+   where status = 'confirmed'
+     and is_anonymous = false
+     and display_name_publicly = true;
+```
+
+Helper functions:
+
+- `public.is_admin(uid uuid) returns boolean language sql security definer stable` — single source of truth for admin checks. Grant execute to `authenticated`.
+- `public.confirm_donation(p_intent_id uuid, p_event_id uuid, p_amount integer) returns void language plpgsql security definer` — locks the intent row (`for update`), transitions to `confirmed`, computes excess vs `target_amount_cents`, inserts into `global_reserve_entries` if positive. Use this function from webhook + manual-confirm only.
+
+`security definer` functions must `set search_path = public` and never accept user-controlled identifiers without parameter binding.
+
+---
+
+## Storage
+
+Buckets defined in `supabase/config.toml` and policies in a migration:
+
+| Bucket | Public read | Write |
+|---|---|---|
+| `item-images` | yes | admin only |
+| `accountability-proofs` | yes | admin only |
+| `donor-uploads` | no | admin only |
+
+Use signed URLs for private buckets. Set `image/png|jpeg|webp` allowlist on policies.
+
+---
+
+## Schema Change Checklist
+
+Before pushing a migration:
+
+- [ ] Existing domain confirmed (extend > create)
+- [ ] Every new FK has an index in the same migration
+- [ ] Enum columns mirrored in Zod validators (`src/lib/validators/`)
+- [ ] RLS enabled on any new table
+- [ ] Public-facing policies use views, not direct table access for sensitive columns
+- [ ] Tenant scoping (mission_id) preserved where applicable
+- [ ] `bunx supabase db lint` clean
+- [ ] Regenerated types: `bunx supabase gen types typescript --linked > src/lib/supabase/types.ts`
+- [ ] Audit trigger or `logAudit()` call covers the new write path
 
 ---
 
 ## Domain Map
 
-| Domain | Representative Tables |
-|--------|------------------------|
-| Core | `users`, `mentorados`, `metricas_mensais`, `feedbacks`, `badges`, `mentorado_badges`, `ranking_mensal` |
-| CRM | `leads`, `interacoes`, `crm_column_config`, `tasks` |
-| Patients | `pacientes`, `pacientes_info_medica`, `pacientes_procedimentos`, `pacientes_fotos`, `pacientes_documentos`, `pacientes_chat_ia`, `planos_tratamento`, `pacientes_consentimentos` |
-| Financial | `categorias_financeiras`, `formas_pagamento`, `transacoes`, `insumos`, `procedimentos` |
-| Integrations | `whatsapp_messages`, `whatsapp_contacts`, `instagram_tokens`, `instagram_sync_log`, `facebook_ads_*`, `google_tokens` |
+| Domain | Tables |
+|---|---|
+| Mission catalog | `missions`, `categories`, `donation_items` |
+| Donation flow | `donation_intents`, `payment_events`, `global_reserve_entries` |
+| Accountability | `accountability_entries` |
+| Audit | `audit_logs` |
+| Settings | `settings`, `admin_users` |
 
-For table-by-table orientation, load:
-` .claude/docs/architecture/12-database-schema-reference.md`
-
----
-
-## When to Escalate Context
-
-Load deeper references if the task involves:
-
-- cross-domain schema design
-- tenant resolution impact
-- integration token/storage design
-- financial/reporting correctness
-- architecture-level tradeoffs
-- deciding whether to extend vs create a table
-
-For those cases, prefer reading the architecture references instead of bloating this rule file.
+`donation_items.collected_amount` does **not** exist. The total comes from the `confirmed_amount_by_item` view. UI binds to that view.
 
 ---
 
-## Summary
+## When To Load More
 
-This rule file should stay short, operational, and safe.
-
-- Rules here = immediate schema guardrails
-- Architecture docs = deep reference
-- `apps/api/drizzle/AGENTS.md` = canonical implementation authority
+| Need | Load |
+|---|---|
+| API/server logic that reads or writes the schema | `.claude/rules/backend.md` |
+| Frontend bindings + types in components | `.claude/rules/frontend.md` |
+| Webhook idempotency + integration callers | `.claude/rules/integrations.md` |
+| Universal stability checklist | `.claude/rules/stability.md` |

@@ -1,142 +1,150 @@
 ---
-globs: apps/web/**
+globs: src/pages/**, src/components/**, src/layouts/**, src/styles/**, src/lib/icons.tsx, src/lib/format/**
 ---
 
 # Frontend Rules (Tier 2 — Auto-loaded)
 
-> Canonical implementation authority when editing frontend code: `apps/web/src/AGENTS.md`
-> Design foundations and feature references: `.claude/docs/design-specs/`
+> Authority: this file + root `AGENTS.md`. Visual reference: `docs/stitch-design/`.
 
 ## Purpose
 
-This file stays intentionally **slim**. It should provide the minimum operational guardrails needed during auto-load, then point to deeper references only when the task requires them.
-
-Load deeper docs **on demand**, not by default.
+Operational guardrails for Astro pages, layouts, components, styling, hydration boundaries.
 
 ---
 
-## Load Strategy
+## Render Mode
 
-### Always use this file for
-- React/frontend implementation in `apps/web/**`
-- component edits
-- styling changes
-- route/page updates
-- client-side performance fixes
+| Path | Mode | Declaration |
+|---|---|---|
+| `src/pages/index.astro` | static | `export const prerender = true;` |
+| `src/pages/doar/index.astro` | static | `prerender = true` |
+| `src/pages/doar/[slug].astro` | SSR | `prerender = false` |
+| `src/pages/prestacao-de-contas.astro` | static (rebuild on admin write) | `prerender = true` |
+| `src/pages/admin/**` | SSR | `prerender = false` |
+| `src/pages/api/**` | SSR | `prerender = false` |
 
-### Also load these references only when needed
-
-| Need | Load |
-|------|------|
-| Visual language, layout, GPUS tokens, anti-generic direction | `.claude/docs/design-specs/00-design-system-foundation.md` |
-| Extend-vs-create decision, doc/component structure strategy | `.claude/docs/design-specs/00-lever-philosophy.md` |
-| Historical frontend bug patterns, rerender/perf pitfalls | `.claude/docs/design-specs/00-frontend-learnings.md` |
-| Global app shell, sidebar, page container, navigation rules | `.claude/docs/design-specs/global-layout-navigation.md` |
-| Feature-specific UI behavior | relevant file under `.claude/docs/design-specs/` |
+Hybrid is **mandatory** (root cardinal rule #4). Never SPA.
 
 ---
 
 ## Component Placement
 
-- `components/ui/` → shadcn/ui primitives only
-- `components/[feature]/` → feature-specific components
-- Do not place custom product composites in `components/ui/`
+- `src/components/ui/` — shadcn-style primitives + `Icon.astro` adapter. Never product-specific composites here.
+- `src/components/donation/` — donation flow (ItemCard, DonationForm, PixPanel, RecentDonors).
+- `src/components/accountability/` — accountability cards, timeline.
+- `src/components/admin/` — admin dashboard primitives (MetricCard, ItemsTable, LogsFeed, FileUpload).
+- `src/layouts/` — `PublicLayout.astro`, `AdminLayout.astro` only.
+- `src/pages/` — route pages only; never reusable components.
+
+Default to `.astro` files. Promote to `.tsx` (React island) only when interactivity is required:
+
+| Component type | File |
+|---|---|
+| Hydration-free static markup | `.astro` |
+| Form, polling, optimistic UI, toast queue | `.tsx` (React 19 island) |
 
 ---
 
-## Styling and Tokens
+## Hydration Directives
 
-- Use semantic tokens such as `bg-primary`, `text-foreground`, `border-border`
-- Use approved custom utilities only when semantic tokens are insufficient
-- Never hardcode hex values in component code
-- Prefer tonal separation and spacing before extra borders/shadows
-
-For full visual guidance, load:
-- `.claude/docs/design-specs/00-design-system-foundation.md`
-
----
-
-## React 19 Rules
-
-- Function components only
-- Hooks at top level only
-- Use `ref` as prop instead of `React.forwardRef`
-- Ref callbacks should return cleanup functions when needed
-- Use `<Context value={...}>` directly
-- Use `use()` only for reading promises/context, never to create promises in render
-- Prefer localized Suspense boundaries, not one giant boundary
+| Use | When |
+|---|---|
+| `client:visible` | Default for islands below the fold (`<DonationForm client:visible />`) |
+| `client:idle` | Background islands that hydrate after main thread free (toast root) |
+| `client:load` | **Avoid** unless strictly above-the-fold and required for LCP — and even then, prefer `.astro` |
+| `client:only="react"` | Only when the component cannot SSR (e.g., uses `window` at top level) |
 
 ---
 
-## Frontend Performance Rules
+## Styling
 
-- `staleTime` must equal `refetchInterval` for polling queries
-- `gcTime` must be greater than or equal to `staleTime`
-- Use `skipToken` for conditional queries
-- Memoize hot-path list items with `React.memo`
-- Stabilize callbacks passed to memoized children
-- Hoist static arrays, objects, `Intl` instances, and regexes to module scope
-- Never create expensive objects in render paths
-- Use `useTransition` for non-urgent UI updates
-- Prefer `Set`/`Map` over repeated `.find()`/`.includes()` in hot paths
-- Use immutable array methods instead of in-place mutation
-- Avoid nested scroll containers unless the layout pattern explicitly requires them
-
-For historical pitfalls and concrete examples, load:
-- `.claude/docs/design-specs/00-frontend-learnings.md`
+- All tokens come from `src/styles/global.css` `@theme { … }`. Use semantic Tailwind classes: `bg-surface-container-lowest`, `text-on-surface`, `border-outline-variant`, `text-secondary`.
+- **No hardcoded hex** outside `@theme`. The token list is enumerated in `AGENTS.md` § Design System and in `docs/stitch-design/miss_o_amaz_nica_design_system/DESIGN.md`.
+- Custom utilities live in `global.css` after the `@theme` block: `.shadow-card`, `.shadow-card-hover`, `.shadow-modal`, `.skip-link`.
+- Spacing uses the named scale (`p-md`, `gap-lg`, `mb-huge`) per the 8-px grid.
 
 ---
 
-## Layout Rules
+## Icons
 
-Use the standard application structure unless the feature explicitly requires a different contained-scroll pattern:
+```astro
+---
+import Icon from '@/components/ui/Icon.astro';
+---
+<Icon name="hand_heart" size={20} class="text-secondary" />
+```
 
-`DashboardLayout → Scroll owner → PageContainer → Content`
-
-- Prefer one main scroll owner per page
-- Keep page hierarchy obvious
-- Preserve responsive spacing rhythm
-- Avoid generic template-like layouts
-
-For full layout/navigation guidance, load:
-- `.claude/docs/design-specs/global-layout-navigation.md`
+- Source from `src/lib/icons.tsx` (mapping table).
+- Mockup names map to Lucide names via the table; missing key → typecheck error.
+- Use the Astro variant (`Icon.astro`) for SSR; the React variant exists only for islands that already render via React.
+- **Never** import a `Material Symbols Outlined` font, never use `<span class="material-symbols-outlined">`, never use emoji.
 
 ---
 
-## Stability Rules (Frontend-specific)
+## Forms
 
-- Always wrap `mutateAsync` in `try/catch` with user-facing error handling
-- Never use `href="#"`; use `<button>` for actions
-- Error boundaries must not expose stack traces in production
-
-Also follow shared stability rules from:
-- `.claude/rules/stability.md`
-
----
-
-## Decision Heuristic
-
-Before adding a new component or pattern:
-
-1. Check whether an existing component/pattern can be extended
-2. Prefer extending existing structure over creating a parallel one
-3. Load deeper design references only if the task truly needs them
-
-For the full decision framework, load:
-- `.claude/docs/design-specs/00-lever-philosophy.md`
+- All forms validate with the same Zod schemas the server uses (re-export from `src/lib/validators/`).
+- Form islands handle:
+  - client-side Zod validation on submit
+  - `fetch('/api/...', { method, body, headers })` with explicit `Content-Type: application/json`
+  - error display branched on `error.code` (never on `error` substrings)
+  - loading state via `useTransition` or local `isPending`
+- LGPD consent: every donation form shows explicit copy ("Autorizo exibir meu nome…") and stores the boolean.
 
 ---
 
-## Summary
+## Performance Discipline
 
-This file is the frontend **guardrail layer**:
-- short
-- operational
-- auto-load friendly
+- `staleTime` on any TanStack Query usage equals `refetchInterval`.
+- Memoize hot list items (`React.memo`) when rendering > 30 cards.
+- Stabilize callbacks passed to memoized children (`useCallback` with full dep list).
+- Hoist static arrays, objects, `Intl` instances, and regexes to module scope.
+- Don't create expensive objects inside render bodies.
+- Prefer `Set` / `Map` over repeated `.find()` / `.includes()` on hot paths.
+- Use immutable array methods; never mutate state in place.
+- Avoid nested scroll containers unless the layout pattern requires them.
 
-Deep detail lives in:
-- `apps/web/src/AGENTS.md`
-- `.claude/docs/design-specs/00-design-system-foundation.md`
-- `.claude/docs/design-specs/00-lever-philosophy.md`
-- `.claude/docs/design-specs/00-frontend-learnings.md`
-- `.claude/docs/design-specs/global-layout-navigation.md`
+---
+
+## Images
+
+- Static art (hero photo, logo) → `astro:assets` with `<Image>`, `loading="eager"` + `fetchpriority="high"` for LCP, otherwise `loading="lazy"` + `fetchpriority="low"`.
+- User-uploaded (Supabase Storage) → plain `<img>` with the public URL, **always with explicit `width` + `height`** (CLS = 0).
+- Below the fold: `loading="lazy"`.
+- Decorative-only: `alt=""` and `aria-hidden="true"`.
+- Meaningful: descriptive `alt` in pt-BR.
+
+---
+
+## Accessibility
+
+- One `<h1>` per page. Sectioning via `<section>` / `<article>` / `<nav>` / `<main id="conteudo-principal" tabindex="-1">`.
+- All icon-only buttons require `aria-label`.
+- Focus rings: `outline: 2px solid var(--color-secondary); outline-offset: 2px;` on every interactive element.
+- Skip link `.skip-link` is always the first focusable element on the page.
+- `<noscript>` block forces `[data-reveal]` content to be visible (so animation gating never hides content).
+- FAQ / accordion expand uses CSS grid `grid-template-rows: 0fr ↔ 1fr` — never animate `height`.
+
+---
+
+## Negative Constraints
+
+- No `npm`/`yarn`/`pnpm`. Bun only.
+- No `href="#"`. `<button>` for actions, real `<a>` for navigation.
+- No emoji. No Material Symbols. Lucide only.
+- No hardcoded hex outside `@theme`.
+- No `client:load` on non-LCP islands.
+- No animation of layout properties (`width`, `height`, `top`, `left`).
+- No SPA frameworks.
+- No global CSS overrides bypassing tokens.
+
+---
+
+## When To Load More
+
+| Need | Load |
+|---|---|
+| API contract / Zod schemas / server logic | `.claude/rules/backend.md` |
+| Schema / type generation | `.claude/rules/database.md` |
+| External provider UI integration | `.claude/rules/integrations.md` |
+| Universal stability checklist | `.claude/rules/stability.md` |

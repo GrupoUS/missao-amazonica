@@ -1,0 +1,52 @@
+---
+/**
+ * Icon — SSR-safe Lucide adapter.
+ *
+ * Renders the React Lucide component to plain HTML at build/SSR time
+ * (no hydration cost). Use anywhere in .astro files.
+ *
+ * Usage:
+ *   <Icon name="hand_heart" size={20} class="text-secondary" />
+ *
+ * The mapping table lives in src/lib/icons.tsx and enforces 1:1
+ * Material-Symbols-Outlined → Lucide name parity.
+ */
+import { iconMap, type IconName } from '@/lib/icons';
+
+interface Props {
+  name: IconName;
+  size?: number;
+  strokeWidth?: number;
+  class?: string;
+  'aria-hidden'?: 'true' | 'false';
+  'aria-label'?: string;
+}
+
+const {
+  name,
+  size = 20,
+  strokeWidth = 2,
+  class: className = '',
+  'aria-hidden': ariaHidden,
+  'aria-label': ariaLabel,
+} = Astro.props;
+
+const Component = iconMap[name];
+
+if (!Component) {
+  throw new Error(`Icon "${name}" not found in iconMap. Add it to src/lib/icons.tsx.`);
+}
+
+// If aria-label is provided, drop aria-hidden so it announces.
+const resolvedAriaHidden =
+  ariaLabel !== undefined ? 'false' : (ariaHidden ?? 'true');
+---
+
+<Component
+  size={size}
+  strokeWidth={strokeWidth}
+  className={className}
+  aria-hidden={resolvedAriaHidden}
+  aria-label={ariaLabel}
+  focusable="false"
+/>

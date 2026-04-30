@@ -1,192 +1,121 @@
 ---
-globs: apps/api/src/**
+globs: src/pages/api/**, src/middleware.ts, src/lib/supabase/**, src/lib/payments/**, src/lib/email/**, src/lib/audit/**, src/lib/auth/**
 ---
 
 # Backend Rules (Tier 2 — Auto-loaded)
 
-> Canonical implementation authority: `apps/api/src/AGENTS.md`
-> Architecture references: `.claude/docs/architecture/`
+> Authority: this file + root `AGENTS.md`. There is no separate `apps/api/AGENTS.md` — this is a single Astro app.
 
 ## Purpose
 
-This file stays intentionally **slim**.
-
-Use it for:
-- immediate backend guardrails
-- safe defaults while editing `apps/api/src/**`
-- routing to the right deeper reference only when needed
-
-Do **not** turn this file into a handbook. Deep examples, historical bug patterns, and operational background belong in Tier 3 architecture references.
+Operational guardrails for server-side code: API routes, middleware, Supabase access, Pix providers, Resend email, audit logging.
 
 ---
 
-## Load Strategy
+## Astro API Routes
 
-Load additional context only when the task requires it:
+```ts
+// src/pages/api/donations/create.ts
+import type { APIRoute } from 'astro';
+
+export const prerender = false; // mandatory for /api/**
+
+export const POST: APIRoute = async ({ request, locals, cookies }) => {
+  // 1. validate input via Zod (schema imported from src/lib/validators)
+  // 2. read authenticated session via locals.supabase
+  // 3. perform action through Supabase client (RLS enforces auth)
+  // 4. return JSON via new Response or `Response.json(...)`
+};
+```
+
+Rules:
+- Always declare `export const prerender = false` on `src/pages/api/**`. Without it, Astro tries to prerender at build time.
+- Type handlers as `APIRoute`. Use `request`, `locals`, `cookies`, `redirect`, `params` from the context.
+- Validate every body with **Zod**. Schemas live at module scope in `src/lib/validators/<domain>.ts`.
+- Return `Response.json({ data })` or `Response.json({ error, code }, { status })`. Never leak raw exceptions.
+- Set `Cache-Control: no-store` on any endpoint that touches per-user state.
+
+---
+
+## Supabase Server Access
+
+Three client types, picked by call site:
+
+| Client | Module | Use from | Auth |
+|---|---|---|---|
+| Server-side per-request (RLS) | `src/lib/supabase/server.ts` | Astro pages + API routes + middleware | Cookie session via `@supabase/ssr` |
+| Browser island | `src/lib/supabase/browser.ts` | React island components only | Anon key, public |
+| Service role | `src/lib/supabase/admin.ts` | Webhook handlers + admin-action endpoints only | Service-role key |
+
+`src/lib/supabase/admin.ts` must throw at import time if `import.meta.env.SSR === false`. Never reach for it in a `.tsx` island.
+
+`createServerClient` reads cookies through `Astro.cookies`. The middleware sets cookies and exposes `locals.supabase` + `locals.user` so downstream code does not re-instantiate.
+
+---
+
+## Auth Model
+
+- **RLS is the primary auth layer.** Endpoints typically rely on the per-request server client; RLS blocks cross-tenant or cross-role reads/writes automatically.
+- Admin checks: call `is_admin(auth.uid())` via Supabase, or use the helper `await requireAdmin(Astro)` from `src/lib/auth/admin-guard.ts`. Both fail fast with 403.
+- Never re-implement `is_admin` in TypeScript — it lives in plpgsql and is the source of truth.
+- For routes that must run with elevated rights (webhook → confirm donation), use the service-role client and explicitly enforce idempotency.
+
+---
+
+## Idempotency Rules (Webhooks + Admin Mutations)
+
+- Every webhook insert into `payment_events` is `on conflict (provider, bank_end_to_end_id) do nothing returning id`. If `id` is null → ack 200 and skip.
+- Every admin mutation that changes financial state goes through `confirm_donation(intent_id, event_id, amount)` plpgsql function. Never bypass it from JS.
+- Manual confirmations use `provider='manual'` and `bank_end_to_end_id='MAN-' || intent_id` — guarantees uniqueness vs future bank events.
+
+---
+
+## Error Contract
+
+```ts
+return Response.json({ error: 'Item not found', code: 'item_not_found' }, { status: 404 });
+```
+
+- `error`: human-readable, pt-BR, safe to surface to a donor.
+- `code`: stable machine identifier; the frontend branches on this, never on `error` substrings.
+- Server logs the underlying exception with `Sentry.captureException` plus structured context (`intent_id`, `txid`, `route`).
+- Never include stack traces, raw SQL errors, or internal paths in the response body.
+
+Standard codes: `validation_failed`, `item_not_found`, `item_not_published`, `intent_not_found`, `rate_limited`, `webhook_invalid_signature`, `webhook_disabled`, `internal_error`.
+
+---
+
+## Email (Resend) Wrapper
+
+`src/lib/email/resend.ts` exposes `sendEmail({ to, subject, react })`. It must:
+- log a structured warn and return `{ skipped: true }` when `RESEND_API_KEY` is undefined — never throw.
+- never block the calling endpoint on slow Resend responses (`await` is fine; failures are caught + logged).
+- never include donor PII in subject lines.
+
+---
+
+## Audit
+
+`src/lib/audit/log.ts` exposes `logAudit({ actorId, action, entityType, entityId, before, after })`. Every admin POST/PATCH/DELETE calls it. The DB also has a trigger for `donation_items` / `accountability_entries` / `settings` as a backstop.
+
+---
+
+## Stability Checklist (backend subset)
+
+- Always guard `await supabase.from(...).select().single()` results — `.single()` returns `{ data, error }`; check `error` and `data` before using.
+- For arrays, check both `error` and `data?.length` before destructuring.
+- Never use `as any`. Generate types via `bunx supabase gen types --linked` and import from `src/lib/supabase/types.ts`.
+- Never use a non-null assertion (`!`) on Supabase results.
+- Every external call (Pix, Resend, Sentry) must have a timeout (default 5s for sync confirm, 30s for batched).
+- No `console.log`. Use `Sentry.captureException` for errors and `Sentry.captureMessage` (level=info) for notable events.
+
+---
+
+## When To Load More
 
 | Need | Load |
-|------|------|
-| Backend structure, routers, request flow | `.claude/docs/architecture/03-backend-components.md` |
-| Data model / persistence architecture | `.claude/docs/architecture/06-data-architecture.md` |
-| Security, auth boundaries, webhook verification | `.claude/docs/architecture/07-security-architecture.md` |
-| External providers and integration topology | `.claude/docs/architecture/09-integration-map.md` |
-| Runtime config / env / backend learnings | `.claude/docs/architecture/11-runtime-environment.md` |
-| Schema domain overview | `.claude/docs/architecture/12-database-schema-reference.md` |
-| Historical backend bug patterns | `.claude/docs/architecture/13-backend-learnings.md` |
-| Full backend coding authority while editing | `apps/api/src/AGENTS.md` |
-
----
-
-## Procedure Hierarchy
-
-Use the correct procedure level. Never emulate role separation manually inside a broader procedure.
-
-```/dev/null/backend-procedure-hierarchy.txt#L1-4
-publicProcedure    → health checks and explicitly public endpoints
-protectedProcedure → authenticated user required
-adminProcedure     → authenticated + admin authorization
-mentoradoProcedure → authenticated + mentorado resolved from context
-```
-
-### Rule
-- Do not use `protectedProcedure` and then hand-roll admin or mentorado checks if a narrower procedure already exists.
-- Tenant identity should come from context, not from redundant client input.
-
----
-
-## Type Safety
-
-- Prefer `unknown` over `any`
-- Prefer type narrowing over unsafe assertions
-- Use `as const` for immutable structured values
-- Avoid `as any`; if you truly need an escape hatch, isolate it and document why
-- Match Zod input types to DB/runtime expectations exactly
-
-### Zod Rules
-- Define schemas at module scope
-- Prefer `z.unknown()` over `z.any()`
-- Use `z.discriminatedUnion()` for unions with 3+ variants
-- Import from `'zod'`, not `'zod/v4'`
-- Add `.max()` to user-controlled string inputs
-- Be careful with `z.coerce.number()` because `Number("") === 0`
-
----
-
-## Request and Service Shape
-
-```/dev/null/backend-request-lifecycle.txt#L1-6
-HTTP → Hono → tRPC Router → Procedure middleware
-     → Zod validation → service logic
-     → Drizzle query → response mapping
-```
-
-### Rules
-- Keep business logic out of thin procedure handlers
-- Co-locate service functions with routers rather than creating arbitrary service sprawl
-- Use composable query/service helpers for repeated backend logic
-- Use `Promise.all` for truly independent work
-
----
-
-## Data Access
-
-- Import the shared `db` singleton from `apps/api/src/db.ts`
-- Never use `SELECT *`; specify columns explicitly
-- Add `.limit()` to large queries where appropriate
-- Guard `.returning()` and `.select()` results before destructuring
-- For aggregated metrics, recompute derived values from raw totals
-
-### On-demand references
-- Schema shape: `.claude/docs/architecture/12-database-schema-reference.md`
-- Historical persistence pitfalls: `.claude/docs/architecture/13-backend-learnings.md`
-
----
-
-## Error Handling
-
-- Throw `TRPCError` with correct codes at API boundaries
-- Do not leak raw internal exceptions directly to clients
-- Prefer early returns over deep nesting
-- Use descriptive error messages for logs and internal debugging
-- Server entrypoints must preserve top-level process error handlers
-- When emitting a typed app-level error code, surface it via `cause: { code }` so the tRPC error formatter exposes `error.data.appCode` to the client. Localized human messages must NEVER be the contract — frontend branches on the code, not on substrings.
-
----
-
-## `_core/` Singletons (Mandatory Reuse)
-
-Before adding any provider/SDK client construction in `apps/api/src/`, grep `_core/` for an existing helper. Re-instantiating clients per request is forbidden (TLS handshake cost + connection pool fragmentation).
-
-| Need | Use this | Do NOT |
-|------|----------|--------|
-| Gemini chat / image / multimodal | `getGeminiClient()` from `apps/api/src/_core/ai-provider.ts` | `new GoogleGenAI({ apiKey })` in service files |
-| AI orchestrator (multi-provider text fallback) | `getOrchestrator()` from `apps/api/src/_core/ai-provider.ts` | direct provider imports |
-| Database | shared `db` singleton from `apps/api/src/db.ts` | new Drizzle/Neon connection per file |
-| Structured logger | `createLogger({ service })` from `apps/api/src/_core/logger.ts` | `console.warn(JSON.stringify(...))` with `biome-ignore` |
-
-AI **image** generation specifically lives in `apps/api/src/_core/image-generation.ts` and is Gemini-only (`gemini-3-pro-image-preview` / Nano Banana Pro). OpenAI is **never** wired for images, only as an optional text-orchestrator fallback. Verify against `_core/ai-provider.ts` before trusting any external plan that names "OpenAI" or `gpt-image-*`.
-
----
-
-## Security
-
-- No `console.log` or `debugger` in production backend code
-- No wildcard CORS in production
-- Never commit secrets
-- Use the env/config layer instead of scattered direct secret reads
-- Every external API call must have a timeout
-- Webhook endpoints should acknowledge quickly and process safely
-
-### On-demand references
-- Security architecture: `.claude/docs/architecture/07-security-architecture.md`
-- Runtime/env guidance: `.claude/docs/architecture/11-runtime-environment.md`
-- Integration-specific behavior: `.claude/rules/integrations.md`
-
----
-
-## Performance
-
-- Use `Promise.all` for independent DB or provider calls
-- Prefer prepared statements on hot paths
-- Avoid loading large result sets into memory when SQL aggregation can do the work
-- Keep response contracts stable; adapt consumer-specific transforms near the consumer when possible
-
----
-
-## Stability Checklist (Backend subset)
-
-These are the backend-critical stability reminders. Full cross-app checklist lives in `.claude/rules/stability.md`.
-
-- **A**: Missing barrel re-exports can cause runtime failures
-- **B**: Never use non-null assertion `!` on optional data
-- **C**: Guard empty `.returning()` / `.select()` arrays
-- **D**: Use the correct procedure level for auth scope
-- **E**: Preserve `uncaughtException` and `unhandledRejection` handling
-- **F**: Do not default required production env vars to localhost
-- **G**: Do not use wildcard CORS in production
-- **H**: Use structured logging, not `console.log`
-- **I**: Avoid `as any`
-
----
-
-## When to Load More
-
-Load deeper references only if the task touches one of these areas:
-
-| Trigger | Reference |
-|--------|-----------|
-| tenant resolution, metrics aggregation, date bugs | `.claude/docs/architecture/13-backend-learnings.md` |
-| env vars, runtime behavior, provider credentials | `.claude/docs/architecture/11-runtime-environment.md` |
-| schema/domain placement questions | `.claude/docs/architecture/12-database-schema-reference.md` |
-| system-level backend architecture decisions | `.claude/docs/architecture/03-backend-components.md` |
-
----
-
-## Summary
-
-This file is the **operational guardrail layer** for backend edits.
-
-- Rules here should stay compact
-- Deep detail belongs in architecture references
-- Canonical implementation authority remains `apps/api/src/AGENTS.md`
-- Load more only when the current task actually needs it
+|---|---|
+| Schema / migration / RLS / views | `.claude/rules/database.md` |
+| External provider integration patterns | `.claude/rules/integrations.md` |
+| Universal stability checklist | `.claude/rules/stability.md` |
+| Frontend interaction with API | `.claude/rules/frontend.md` |
