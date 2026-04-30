@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""session_context.py - Session context injection with AGENTS.md auto-loading.
-Outputs structured JSON with additionalContext for cross-platform AGENTS.md compatibility.
+"""session_context.py - Session context injection.
+
+Auto-loads:
+  1. AGENTS.md (root) — generic agent rules + execution best practices
+  2. ${overlay}/CLAUDE-overlay.md — project-specific identity + cardinal rules (if overlay configured)
+
+Outputs structured JSON with additionalContext for cross-platform compatibility.
 Trigger: SessionStart
 """
 import json
@@ -82,7 +87,7 @@ def main() -> None:
     }
     context_prefix = prefixes.get(source, f"{base_tag} branch:{branch}")
 
-    # Load AGENTS.md content
+    # Load AGENTS.md content (generic agent rules)
     agents_content = ""
     agents_file = Path(project_dir) / "AGENTS.md"
     if agents_file.is_file():
@@ -91,14 +96,26 @@ def main() -> None:
         except Exception:
             pass
 
+    # Load overlay's CLAUDE-overlay.md (project-specific Tier 1 supplement) if configured
+    overlay_content = ""
+    overlay_path = str(config.get("overlay", "")).strip()
+    if overlay_path:
+        overlay_file = Path(project_dir) / overlay_path / "CLAUDE-overlay.md"
+        if overlay_file.is_file():
+            try:
+                overlay_content = overlay_file.read_text(errors="replace")
+            except Exception:
+                pass
+
+    parts = [context_prefix]
     if agents_content:
-        additional_context = (
-            f"{context_prefix}\n\n"
-            "--- AGENTS.md (auto-loaded by SessionStart hook) ---\n"
-            f"{agents_content}"
-        )
-    else:
-        additional_context = context_prefix
+        parts.append("--- AGENTS.md (auto-loaded by SessionStart hook) ---")
+        parts.append(agents_content)
+    if overlay_content:
+        parts.append(f"--- {overlay_path}/CLAUDE-overlay.md (project overlay, auto-loaded) ---")
+        parts.append(overlay_content)
+
+    additional_context = "\n\n".join(parts)
 
     output = {
         "hookSpecificOutput": {

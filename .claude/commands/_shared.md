@@ -50,6 +50,7 @@ Substitution placeholders used in commands (resolve at runtime):
 | `${overlay}/seo-supplement.md` | Project-specific SEO routes/locale (loaded by `performance-optimization`) |
 | `${overlay}/debugger-domain-rules.md` | Project anti-pattern catalog (loaded by `debugger` skill if overlay configured) |
 | `${overlay}/protected-files.json` | Extra protected paths (loaded by `protect_files.py` hook) |
+| `${overlay}/project-snapshot.md` | Project orientation: architecture map, commands, data model, design summary (on-demand reference) |
 
 If overlay directory missing → commands run with generic defaults.
 
