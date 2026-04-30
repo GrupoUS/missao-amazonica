@@ -1,6 +1,8 @@
 ---
 import '@/styles/global.css';
 import Icon from '@/components/ui/Icon.astro';
+import ThemeToggle from '@/components/ui/ThemeToggle.tsx';
+import { Toaster } from '@/components/ui/sonner.tsx';
 
 interface Props {
   title?: string;
@@ -22,6 +24,20 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="robots" content="noindex,nofollow" />
+
+    {/* Apply theme class before first paint to prevent FOUC. */}
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem('salda-theme') || 'system';
+          var resolved = stored === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : stored;
+          if (resolved === 'dark') document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -32,7 +48,7 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
   <body class="bg-background text-on-surface antialiased flex min-h-screen">
     <a href="#admin-content" class="skip-link">Pular para o conteúdo</a>
 
-    <aside class="bg-[#faf6f0] font-nav h-screen w-64 border-r border-outline-variant/30 fixed left-0 top-0 flex flex-col py-6 z-40">
+    <aside class="bg-surface-container-lowest font-nav h-screen w-64 border-r border-outline-variant/30 fixed left-0 top-0 flex flex-col py-6 z-40">
       <div class="px-6 mb-8 flex items-center gap-3">
         <div class="size-10 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-semibold shrink-0">
           {userInitials}
@@ -106,7 +122,7 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
         </a>
       </nav>
 
-      <div class="px-6 mt-auto pt-6 flex flex-col gap-2">
+      <div class="px-4 mt-auto pt-6 flex flex-col gap-2">
         <a
           href="/admin/items/new"
           class="w-full bg-primary-container text-on-primary hover:opacity-90 transition-opacity rounded-xl py-2.5 flex items-center justify-center gap-2 shadow-cta font-semibold text-sm"
@@ -114,6 +130,7 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
           <Icon name="add" size={16} />
           Novo Projeto
         </a>
+        <ThemeToggle variant="full" client:idle />
         <form method="POST" action="/admin/logout">
           <button
             type="submit"
@@ -128,5 +145,38 @@ const userInitials = (userEmail.split('@')[0] ?? '?')
     <main id="admin-content" tabindex="-1" class="ml-64 flex-1 min-h-screen px-lg py-xl max-w-[1280px]">
       <slot />
     </main>
+
+    <Toaster client:idle position="bottom-right" richColors closeButton />
+
+    <script is:inline>
+      (function () {
+        if (!('IntersectionObserver' in window)) {
+          document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+          return;
+        }
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+          return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+        document.querySelectorAll('.reveal').forEach(function (el) { observer.observe(el); });
+      })();
+    </script>
+
+    <noscript>
+      <style>
+        .reveal {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
   </body>
 </html>

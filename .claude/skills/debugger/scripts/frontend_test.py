@@ -2,14 +2,36 @@
 """frontend_test.py - Debug Skill - Frontend Testing with agent-browser.
 Supports two modes:
   Headless (default): agent-browser opens its own Chrome
-  CDP (--cdp):        checks Windows Chrome CDP, then falls back to headless agent-browser
+  CDP (--cdp):        checks Chrome CDP, then falls back to headless agent-browser
+
+Default URL resolves from .claude/config.json::project.stagingUrl.
+Override via positional argv[1].
 """
 import argparse
+import json
+import os
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
-DEFAULT_URL = "https://staging.neondash.com.br"
+
+def resolve_default_url() -> str:
+    """Read project.stagingUrl from .claude/config.json; fall back to localhost."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    config_path = Path(project_dir) / ".claude" / "config.json"
+    if config_path.is_file():
+        try:
+            cfg = json.loads(config_path.read_text(errors="replace"))
+            url = cfg.get("project", {}).get("stagingUrl", "").strip()
+            if url:
+                return url
+        except Exception:
+            pass
+    return "http://localhost:3000"
+
+
+DEFAULT_URL = resolve_default_url()
 DEFAULT_SCREENSHOT = "./debug-screenshot.png"
 
 

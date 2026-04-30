@@ -47,6 +47,17 @@ def get_project_dir() -> str:
         return os.getcwd()
 
 
+def load_project_config(project_dir: str) -> dict[str, object]:
+    """Read .claude/config.json if present. Returns empty dict on any failure."""
+    config_path = Path(project_dir) / ".claude" / "config.json"
+    if not config_path.is_file():
+        return {}
+    try:
+        return typing.cast(dict[str, object], json.loads(config_path.read_text(errors="replace")))
+    except Exception:
+        return {}
+
+
 def main() -> None:
     data: dict[str, object] = read_input()
     source = str(data.get("source", "startup"))
@@ -54,13 +65,22 @@ def main() -> None:
     project_dir = get_project_dir()
     branch = get_git_branch(project_dir)
 
+    # Project tag from config (fallback to directory name)
+    config = load_project_config(project_dir)
+    project = typing.cast(dict[str, object], config.get("project", {}))
+    project_name = str(project.get("name", "")).strip().upper() or Path(project_dir).name.upper()
+    tooling = typing.cast(dict[str, object], config.get("tooling", {}))
+    pkg_mgr = str(tooling.get("packageManager", "")).strip()
+    pkg_tag = pkg_mgr.capitalize() if pkg_mgr else ""
+
     # Build context prefix based on session event source
+    base_tag = f"[{project_name}]" + (f" {pkg_tag}" if pkg_tag else "")
     prefixes = {
-        "startup": f"[NEONDASH] Bun | branch:{branch} | gates: check+lint+test | db:push",
-        "compact": f"[NEONDASH] Bun, check, lint:check, test, db:push | branch:{branch}",
-        "resume": f"[NEONDASH] Resumed | branch:{branch}",
+        "startup": f"{base_tag} | branch:{branch} | gates: check+lint+test",
+        "compact": f"{base_tag} | check, lint, test | branch:{branch}",
+        "resume": f"{base_tag} Resumed | branch:{branch}",
     }
-    context_prefix = prefixes.get(source, f"[NEONDASH] branch:{branch}")
+    context_prefix = prefixes.get(source, f"{base_tag} branch:{branch}")
 
     # Load AGENTS.md content
     agents_content = ""

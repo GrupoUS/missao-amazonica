@@ -1,138 +1,131 @@
----
-globs: src/lib/payments/**, src/lib/email/**, src/lib/monitoring/**, src/pages/api/webhooks/**, src/lib/realtime.ts
----
+# Integration Rules (Tier 2 — Generic Template)
 
-# Integration Rules (Tier 2 — Auto-loaded)
-
-> Operational guardrails for external providers used by this app.
+> Replace placeholders with project specifics, or override entirely via `${overlay}/rules/integrations.md`.
 
 ## Purpose
 
-Compact rules for Pix providers (`bank_pix`, `manual`, future Mercado Pago/Asaas), Resend email, Sentry, Supabase Realtime, Vercel.
+Operational guardrails for external providers — payments, email, monitoring, real-time, deploy.
 
 ---
 
-## Universal Rules
+## Universal rules
 
 - Every external API call has a timeout. Default 5s for synchronous, 30s for batch.
-- Webhooks ack quickly (200) and process side effects safely. Long work goes to a queue (out of scope for MVP — process inline but keep total under 5s).
-- Idempotency is mandatory on every webhook ingestion path.
-- Treat provider payloads as untrusted. Validate with Zod before downstream use.
-- Log integration failures with structured context via `Sentry.captureException` + tags `{ provider, route, txid }`.
-- Secrets only via env. Never inline. Never commit a `.env` file.
+- Webhooks ack quickly (200) and process side effects safely. Long work goes to a queue.
+- **Idempotency mandatory** on every webhook ingestion path.
+- Treat provider payloads as untrusted. Validate with schema library (Zod / Valibot / equivalent) before downstream use.
+- Log integration failures with structured context: `provider`, `route`, `txid` / external_id.
+- Secrets only via env. Never inline. Never commit `.env`.
 - No hardcoded provider versions, base URLs, or credentials.
 
 ---
 
-## Pix Provider Abstraction
+## Provider abstraction pattern
 
-### Interface
+When the project supports multiple providers for the same role (multiple payment processors, email vendors, etc.):
 
 ```ts
-// src/lib/payments/providers/types.ts
-export interface PixProvider {
-  id: 'bank_pix' | 'manual' | 'mercado_pago' | 'asaas';
-  createIntent(args: CreateIntentArgs): Promise<{ payload: string; qrDataUrl: string; txid: string; expiresAt: string }>;
-  verifyWebhook?(req: Request): Promise<{ valid: boolean; event?: ParsedEvent }>;
-  queryStatus?(txid: string): Promise<'pending' | 'confirmed' | 'failed'>;
+export interface PaymentProvider {
+  id: 'provider_a' | 'provider_b' | 'manual';
+  createIntent(args): Promise<{ payload, qrDataUrl?, txid, expiresAt }>;
+  verifyWebhook?(req): Promise<{ valid: boolean; event?: ParsedEvent }>;
+  queryStatus?(txid): Promise<'pending' | 'confirmed' | 'failed'>;
 }
 ```
 
-### Selection
-
-`src/lib/payments/registry.ts → getProvider(supabase)`:
-- reads `settings.bank_status` from DB (cached per-request)
-- returns `bank-pix-provider` when `'api_configured' | 'webhook_configured'`
-- returns `manual-provider` otherwise
-
-### Bank Pix
-
-- HMAC-SHA256 over the raw request body using `PIX_BANK_WEBHOOK_SECRET`. Compare against `x-signature` header in constant time (`crypto.timingSafeEqual`).
-- If signature invalid → `Response.json({ error, code: 'webhook_invalid_signature' }, { status: 401 })`.
-- If secret undefined in env → `Response.json({ error, code: 'webhook_disabled' }, { status: 501 })` (per PROMPT.md production-safe disable).
-- Insert into `payment_events` `on conflict (provider, bank_end_to_end_id) do nothing returning id`. Skip downstream when no row.
-- Match `donation_intents` by `pix_txid` + `amount_cents` + `status='pending'`. Orphan match → log + ack 200.
-- Call `confirm_donation(intent_id, event_id, amount)` plpgsql function. Log audit row.
-- Trigger Resend `sendDonationConfirmed` (donor + admin) — non-blocking, errors caught.
-
-### Manual (Fallback)
-
-- `createIntent` still generates the QR + payload (donors can pay; bank does not webhook).
-- `verifyWebhook` returns `{ valid: false }` always.
-- Admin route `/api/admin/manual-confirm` writes synthetic event with `provider='manual'`, `bank_end_to_end_id='MAN-<intent_id>'`, then calls `confirm_donation`.
-
-### Mercado Pago / Asaas (Disabled Stubs)
-
-- Files end in `.disabled.ts` and throw `not_implemented`. They serve as integration anchors for the future, not callable code.
+A `registry.ts` (`getProvider(client)`) reads the active provider from settings/config, returns the right implementation. Disabled providers stay as `*.disabled.ts` stubs that throw `not_implemented` — keeps the call site stable when toggling later.
 
 ---
 
-## Pix BR-Code (EMV) Generator
+## Webhook handling
 
-`src/lib/payments/pix.ts → buildPixPayload({ pixKey, txid, amountCents, merchantName, merchantCity, description? })`:
+```ts
+export const POST: Handler = async ({ request }) => {
+  // 1. Verify signature (constant-time comparison)
+  const sig = request.headers.get('x-signature');
+  if (!verifyHmac(sig, body, SECRET)) {
+    return Response.json({ error, code: 'webhook_invalid_signature' }, { status: 401 });
+  }
 
-- Pure function, no I/O beyond `qrcode.toDataURL`.
-- TXID: 1–25 chars, alphanumeric uppercase. Format `MIS<itemSlug8><ulidSuffix12>`.
-- CRC16/CCITT-FALSE on the full string + `"6304"` literal (4 hex chars uppercase appended).
-- Merchant name max 25 chars, city max 15 chars, both ASCII (strip diacritics).
-- QR options: `errorCorrectionLevel: 'M', margin: 1, width: 192`.
+  // 2. Idempotent insert
+  const { id } = await db.insert(events).values(parsed).onConflictDoNothing({ target: ['provider', 'external_id'] }).returning({ id });
+  if (!id) return new Response(null, { status: 200 }); // already processed
 
----
+  // 3. Process side effects via canonical procedure
+  await db.execute(sql`SELECT confirm_<action>(${parsed.intent_id}, ${id}, ${parsed.amount})`);
 
-## Resend (Email)
+  // 4. Notify (best-effort, non-blocking — caught + logged)
+  void sendNotification(...).catch(captureException);
 
-- `src/lib/email/resend.ts → sendEmail({ to, subject, react })`.
-- Returns `{ skipped: true }` and logs structured warn if `RESEND_API_KEY` is undefined.
-- Templates in `src/lib/email/templates/` are React components rendered to HTML.
-- Subjects in pt-BR; never include donor PII (no full name, email).
-- Treat 5xx as retryable (single retry with backoff); 4xx as terminal (log + skip).
-- Donor address comes from the intent (when provided). Admin address comes from `settings.contact_email`.
+  return new Response(null, { status: 200 });
+};
+```
 
----
-
-## Sentry
-
-- Configured via `@sentry/astro` integration in `astro.config.mjs`. Init only when `SENTRY_DSN` is set.
-- `Sentry.captureException(err, { tags: { route, provider, intent_id } })` for errors.
-- `Sentry.captureMessage('donation_confirmed', { level: 'info', extra: { item_id, amount_cents } })` for notable events.
-- Never log raw donor PII to Sentry. Strip before send via `beforeSend` if needed.
+If the provider's secret is undefined → return `501 webhook_disabled` instead of crashing.
 
 ---
 
-## Supabase Realtime
+## Email wrapper
 
-- `src/lib/realtime.ts` exposes `subscribeToItem(itemId, onConfirmed)` and `subscribeToDonations(onChange)`.
-- Use Realtime only on the public detail page (`/doar/[slug]`) and admin dashboard. Public listing/landing rebuild on cron or after admin writes — Realtime there is overkill.
-- Always teardown subscriptions on component unmount (`useEffect` return).
-- Channel names: `item:<itemId>`, `donations:all` (admin only via authenticated channel).
+`${paths.libRoot}/email/<provider>.ts` exposes `sendEmail({ to, subject, body })`. Must:
+- Log a structured warn and return `{ skipped: true }` when the API key is undefined — never throw.
+- Never block the calling endpoint on slow provider responses.
+- Never include PII in subject lines.
+- Treat 5xx as retryable (single retry with backoff). Treat 4xx as terminal (log + skip).
 
----
-
-## Vercel
-
-- Env management via `bunx vercel env add <KEY> production`. Never commit env files.
-- Adapter `@astrojs/vercel` with `webAnalytics: { enabled: false }` (we use Sentry).
-- Cold-start mitigation: keep `/api/donations/create` light (no JIT-heavy libs); inline the QR generation (no fetch).
-- Edge runtime is acceptable for the webhook only when bank confirms compatibility; default to Node serverless to avoid Web-only API friction.
-- ISR / on-demand revalidation: `/prestacao-de-contas` rebuilds via `bunx vercel deploy --build` triggered from admin "publish" action (out of scope for MVP — manual rebuild OK).
+Templates in `${paths.libRoot}/email/templates/` are framework-rendered (React / Astro / handlebars).
 
 ---
 
-## Stability Checklist (integrations subset)
+## Monitoring
 
-- All webhooks: HMAC verify → idempotent insert → process → 200.
-- All external calls: timeout + structured error → Sentry → safe fallback.
-- All credentials: env-only; rotate via `bunx vercel env rm` + `bunx vercel env add`.
-- Provider type unions stay closed (`'bank_pix' | 'manual' | 'mercado_pago' | 'asaas'`); never widen to `string`.
-- Sandbox vs production: distinct env keys (`PIX_BANK_WEBHOOK_SECRET` vs `PIX_BANK_WEBHOOK_SECRET_TEST` if needed later).
+- Configure error tracking (Sentry / Datadog / Bugsnag / equivalent) via init guard — only enable when DSN is set.
+- Tags: `route`, `provider`, `request_id`, relevant entity ids.
+- `captureException(err, { tags })` for errors.
+- `captureMessage(text, { level: 'info', extra })` for notable events.
+- Never log raw PII. Strip via `beforeSend` hook if needed.
 
 ---
 
-## When To Load More
+## Real-time / pub-sub
+
+- Subscribe only on surfaces that actually need it (detail pages, dashboards). Lists/landings rebuild on cron or admin-write — real-time there is overkill.
+- Always tear down subscriptions on component unmount.
+- Channel names: `<entity>:<id>` for per-entity, `<entity>:all` for admin global feeds.
+
+---
+
+## Deploy / infra
+
+- Env management via deployer CLI (`vercel env add`, `fly secrets set`, `railway variables set`, etc.). Never commit env files.
+- Adapter chosen for each framework (Vercel adapter, Node adapter, Cloudflare adapter).
+- Cold-start mitigation: keep critical handlers light (no JIT-heavy libs); inline cheap work; avoid heavy WASM at cold-path.
+- Edge runtime: only when provider compatibility verified. Default to Node serverless.
+- ISR / on-demand revalidation triggered from admin actions when content changes.
+
+---
+
+## Stability checklist (integrations subset)
+
+- All webhooks: signature verify → idempotent insert → process → 200
+- All external calls: timeout + structured error → monitoring → safe fallback
+- All credentials: env-only; rotate via deployer CLI
+- Provider type unions stay closed (`'provider_a' | 'provider_b' | 'manual'`); never widen to `string`
+- Sandbox vs production: distinct env keys
+
+---
+
+## When to load more
 
 | Need | Load |
 |---|---|
-| Astro API route patterns | `.claude/rules/backend.md` |
-| Schema for `payment_events`, `audit_logs` | `.claude/rules/database.md` |
-| UI for donation flow / admin confirm | `.claude/rules/frontend.md` |
-| Universal stability checklist | `.claude/rules/stability.md` |
+| API route patterns | `backend.md` |
+| Schema for events, audit_logs | `database.md` |
+| UI for integration flows | `frontend.md` |
+| Universal stability checklist | `stability.md` |
+
+---
+
+## Project-specific authority
+
+If `${overlay}/rules/integrations.md` exists, prefer it — it captures the project's actual providers (payment, email, monitoring, deploy) and their concrete signature/idempotency contracts.

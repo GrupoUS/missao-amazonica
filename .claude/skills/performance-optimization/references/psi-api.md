@@ -21,10 +21,10 @@ GET https://www.googleapis.com/pagespeedonline/v5/runPagespeed
 
 ```bash
 # Mobile, all 4 categories
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://staging.neondash.com.br&strategy=mobile&category=performance&category=accessibility&category=best-practices&category=seo&locale=pt-BR" -o /tmp/psi-mobile.json
+curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${project.stagingUrl}&strategy=mobile&category=performance&category=accessibility&category=best-practices&category=seo&locale=${project.locale}" -o /tmp/psi-mobile.json
 
 # Desktop
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://staging.neondash.com.br&strategy=desktop&category=performance&category=accessibility&category=best-practices&category=seo&locale=pt-BR" -o /tmp/psi-desktop.json
+curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${project.stagingUrl}&strategy=desktop&category=performance&category=accessibility&category=best-practices&category=seo&locale=${project.locale}" -o /tmp/psi-desktop.json
 ```
 
 ## Score Extraction
@@ -58,9 +58,9 @@ jq '.lighthouseResult.audits["unused-javascript"].details.items | .[0:5] | .[] |
 ## Multi-Route Scan
 
 ```bash
-for route in "/" "/financeiro" "/dashboard" "/crm" "/pacientes" "/workspace"; do
+for route in "/" "/dashboard" "/<your-routes>"; do
   echo "Scanning ${route}..."
-  curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://staging.neondash.com.br${route}&strategy=mobile&category=performance&locale=pt-BR" | \
+  curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${project.stagingUrl}${route}&strategy=mobile&category=performance&locale=${project.locale}" | \
     jq -r "{route: \"${route}\", perf: (.lighthouseResult.categories.performance.score * 100 | round), lcp: .lighthouseResult.audits[\"largest-contentful-paint\"].displayValue, cls: .lighthouseResult.audits[\"cumulative-layout-shift\"].displayValue}"
 done
 ```

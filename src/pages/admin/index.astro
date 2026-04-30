@@ -3,6 +3,8 @@ import AdminLayout from '@/layouts/AdminLayout.astro';
 import Card from '@/components/ui/Card.astro';
 import Badge from '@/components/ui/Badge.astro';
 import Icon from '@/components/ui/Icon.astro';
+import Reveal from '@/components/ui/Reveal.astro';
+import AnimatedNumber from '@/components/ui/AnimatedNumber.tsx';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 import { formatBRL } from '@/lib/format/currency';
 import { formatRelative } from '@/lib/format/date';
@@ -16,14 +18,12 @@ const admin = getSupabaseAdmin();
 const [
   { data: stats },
   { data: pendingCountRow },
-  { data: itemsActive },
   { data: items },
   { data: progressRows },
   { data: auditLogs },
 ] = await Promise.all([
   admin.from('landing_stats').select('*').maybeSingle(),
   admin.from('donation_intents').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-  admin.from('donation_items').select('id', { count: 'exact', head: true }).eq('status', 'published'),
   admin.from('donation_items').select('id, slug, title, urgency, status, target_amount_cents, sort_order').order('sort_order').limit(10),
   admin.from('item_progress').select('item_id, confirmed_amount_cents, target_amount_cents, progress_pct'),
   admin.from('audit_logs').select('id, action, entity_type, entity_id, actor_id, created_at, metadata').order('created_at', { ascending: false }).limit(10),
@@ -56,50 +56,74 @@ const progressMap = new Map(
 
   <!-- Metrics -->
   <section class="grid grid-cols-1 md:grid-cols-4 gap-md mb-xl">
-    <Card variant="metric" accent="secondary" class="p-md">
-      <div class="flex justify-between items-start mb-sm">
-        <p class="type-label text-on-surface-variant">Doações Confirmadas</p>
-        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
-          <Icon name="payments" size={16} />
-        </span>
-      </div>
-      <div class="font-display type-h2 text-on-surface">{formatBRL(totalRaised, { compact: true })}</div>
-      <p class="type-caption text-secondary mt-xs flex items-center gap-1">
-        <Icon name="trending_up" size={12} /> {projectsActive} projetos ativos
-      </p>
-    </Card>
-    <Card variant="metric" accent="secondary" class="p-md">
-      <div class="flex justify-between items-start mb-sm">
-        <p class="type-label text-on-surface-variant">Itens Ativos</p>
-        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
-          <Icon name="inventory_2" size={16} />
-        </span>
-      </div>
-      <div class="font-display type-h2 text-on-surface">{itemsActive ? '—' : projectsActive}</div>
-      <p class="type-caption text-on-surface-variant mt-xs flex items-center gap-1">
-        <Icon name="pending_actions" size={12} /> {pendingCountRow?.length ?? 0} doações pendentes
-      </p>
-    </Card>
-    <Card variant="metric" accent="secondary" class="p-md">
-      <div class="flex justify-between items-start mb-sm">
-        <p class="type-label text-on-surface-variant">Concluídos</p>
-        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
-          <Icon name="check_circle" size={16} />
-        </span>
-      </div>
-      <div class="font-display type-h2 text-on-surface">{itemsCompleted}</div>
-      <p class="type-caption text-on-surface-variant mt-xs">Itens entregues</p>
-    </Card>
-    <Card variant="metric" accent="secondary" class="p-md">
-      <div class="flex justify-between items-start mb-sm">
-        <p class="type-label text-on-surface-variant">Reserva Global</p>
-        <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
-          <Icon name="savings" size={16} />
-        </span>
-      </div>
-      <div class="font-display type-h2 text-on-surface">{formatBRL(reserveCents, { compact: true })}</div>
-      <p class="type-caption text-on-surface-variant mt-xs">Excedente acumulado</p>
-    </Card>
+    <Reveal delay={0}>
+      <Card variant="metric" accent="secondary" class="p-md h-full">
+        <div class="flex justify-between items-start mb-sm">
+          <p class="type-label text-on-surface-variant">Doações Confirmadas</p>
+          <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+            <Icon name="payments" size={16} />
+          </span>
+        </div>
+        <div class="font-display type-h2 text-on-surface">
+          <AnimatedNumber
+            value={totalRaised}
+            format={(n: number) => formatBRL(n, { compact: true })}
+            client:visible
+          />
+        </div>
+        <p class="type-caption text-secondary mt-xs flex items-center gap-1">
+          <Icon name="trending_up" size={12} /> {projectsActive} projetos ativos
+        </p>
+      </Card>
+    </Reveal>
+    <Reveal delay={120}>
+      <Card variant="metric" accent="secondary" class="p-md h-full">
+        <div class="flex justify-between items-start mb-sm">
+          <p class="type-label text-on-surface-variant">Itens Ativos</p>
+          <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+            <Icon name="inventory_2" size={16} />
+          </span>
+        </div>
+        <div class="font-display type-h2 text-on-surface">
+          <AnimatedNumber value={projectsActive} client:visible />
+        </div>
+        <p class="type-caption text-on-surface-variant mt-xs flex items-center gap-1">
+          <Icon name="pending_actions" size={12} /> {pendingCountRow?.length ?? 0} doações pendentes
+        </p>
+      </Card>
+    </Reveal>
+    <Reveal delay={240}>
+      <Card variant="metric" accent="secondary" class="p-md h-full">
+        <div class="flex justify-between items-start mb-sm">
+          <p class="type-label text-on-surface-variant">Concluídos</p>
+          <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+            <Icon name="check_circle" size={16} />
+          </span>
+        </div>
+        <div class="font-display type-h2 text-on-surface">
+          <AnimatedNumber value={itemsCompleted} client:visible />
+        </div>
+        <p class="type-caption text-on-surface-variant mt-xs">Itens entregues</p>
+      </Card>
+    </Reveal>
+    <Reveal delay={360}>
+      <Card variant="metric" accent="secondary" class="p-md h-full">
+        <div class="flex justify-between items-start mb-sm">
+          <p class="type-label text-on-surface-variant">Reserva Global</p>
+          <span class="size-8 rounded bg-secondary-container text-on-secondary-container flex items-center justify-center">
+            <Icon name="savings" size={16} />
+          </span>
+        </div>
+        <div class="font-display type-h2 text-on-surface">
+          <AnimatedNumber
+            value={reserveCents}
+            format={(n: number) => formatBRL(n, { compact: true })}
+            client:visible
+          />
+        </div>
+        <p class="type-caption text-on-surface-variant mt-xs">Excedente acumulado</p>
+      </Card>
+    </Reveal>
   </section>
 
   <!-- Items table + audit logs -->
@@ -194,8 +218,8 @@ const progressMap = new Map(
           <h3 class="font-display type-h3 text-on-surface">Logs Recentes</h3>
         </header>
         <ul class="p-md flex-1 max-h-[480px] overflow-y-auto flex flex-col gap-md">
-          {(auditLogs ?? []).map((log) => (
-            <li class="flex gap-3">
+          {(auditLogs ?? []).map((log, i) => (
+            <Reveal as="li" delay={i * 60} class="flex gap-3">
               <div class="size-6 rounded-full bg-surface-container-lowest border-2 border-secondary flex items-center justify-center shrink-0 mt-0.5">
                 <Icon name="receipt" size={10} class="text-secondary" />
               </div>
@@ -209,7 +233,7 @@ const progressMap = new Map(
                   {formatRelative(log.created_at)}
                 </p>
               </div>
-            </li>
+            </Reveal>
           ))}
           {(auditLogs ?? []).length === 0 && (
             <li class="type-caption text-on-surface-variant py-md text-center">

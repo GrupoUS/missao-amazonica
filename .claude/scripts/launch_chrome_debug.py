@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """launch_chrome_debug.py - Launch Chrome with remote debugging (Windows native).
-Usage: python .claude/scripts/launch_chrome_debug.py
+Usage: python .claude/scripts/launch_chrome_debug.py [URL]
 After launching, log in manually, then use cdp.py commands.
+
+Reads start URL from .claude/config.json::project.stagingUrl unless overridden via argv.
+Profile dir defaults to ~/chrome-debug-profile (override via $CHROME_DEBUG_PROFILE env var).
 """
+import json
+import os
 import subprocess
 import sys
 import time
@@ -12,10 +17,35 @@ from pathlib import Path
 CHROME_PATHS = [
     r"C:\Program Files\Google\Chrome\Application\chrome.exe",
     r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
 ]
-PROFILE_DIR = r"C:\Users\Mauri\chrome-debug-profile"
-DEBUG_PORT = 9222
-START_URL = "https://staging.neondash.com.br"
+PROFILE_DIR = os.environ.get(
+    "CHROME_DEBUG_PROFILE",
+    str(Path.home() / "chrome-debug-profile"),
+)
+DEBUG_PORT = int(os.environ.get("CHROME_DEBUG_PORT", "9222"))
+
+
+def get_start_url() -> str:
+    """Resolve start URL: argv[1] > config.json::project.stagingUrl > localhost:3000."""
+    if len(sys.argv) > 1 and sys.argv[1].startswith(("http://", "https://")):
+        return sys.argv[1]
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+    config_path = Path(project_dir) / ".claude" / "config.json"
+    if config_path.is_file():
+        try:
+            cfg = json.loads(config_path.read_text(errors="replace"))
+            url = cfg.get("project", {}).get("stagingUrl", "").strip()
+            if url:
+                return url
+        except Exception:
+            pass
+    return "http://localhost:3000"
+
+
+START_URL = get_start_url()
 
 
 def find_chrome() -> str:

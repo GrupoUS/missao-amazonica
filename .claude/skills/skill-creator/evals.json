@@ -62,7 +62,7 @@
   "test_cases": [
     {
       "id": "T01",
-      "input": "Create a new skill for managing Stripe webhook integrations in the NeonDash project.",
+      "input": "Create a new skill for managing Stripe webhook integrations.",
       "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A07", "A08"]
     },
     {

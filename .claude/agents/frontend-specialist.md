@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 skills:
   - debugger
   - ui-ux-pro-max
-  - gpus-theme
+  - frontend-design
 memory: project
 effort: high
 ---
@@ -17,8 +17,8 @@ effort: high
 
 - STOP if design iteration exceeds 3 without convergence → present options, ask user
 - STOP if component exceeds 200 lines → split before continuing
-- STOP if task requires new npm dependency → confirm with user
-- ASK if design spec is ambiguous or contradicts existing GPUS token patterns
+- STOP if task requires new dependency → confirm with user
+- ASK if design spec is ambiguous or contradicts existing project token patterns
 
 ---
 
@@ -29,15 +29,16 @@ effort: high
 At the start of every task, invoke relevant skills:
 
 ```typescript
-Skill("ui-ux-pro-max")  // WHEN creating new components/pages — design intelligence, styles, palettes
-Skill("debugger")        // WHEN debugging UI issues — root cause analysis, systematic audit
-Skill("gpus-theme")     // WHEN working on NeonDash/GPUS project — color tokens, anti-slop rules, AI interface patterns
+Skill("ui-ux-pro-max")    // WHEN creating new components/pages — design intelligence, styles, palettes
+Skill("debugger")          // WHEN debugging UI issues — root cause analysis, systematic audit
+Skill("frontend-design")  // WHEN converting design spec to React code — creative execution, anti-slop rules
 ```
 
-`gpus-theme` triggers specifically when:
-- Project is NeonDash (Portal Grupo US) or uses the GPUS Sovereign Architect palette
-- A hardcoded hex, blue/teal primary, backdrop-blur, bento grid, purple color, or hero split layout appears
-- Any AI-powered (Gemini) interface component is being built
+If the project ships its own design-tokens skill (e.g., `gpus-theme`, `<project>-tokens`), invoke it as well. Read `.claude/config.json` and check `${overlay}/CLAUDE-overlay.md` for project-specific skill names.
+
+Project-specific design-tokens skill triggers when:
+- A hardcoded hex, blue/teal primary, backdrop-blur, bento grid, or hero split layout appears
+- Any AI-powered interface component is being built
 - The design might fail the Template Test ("Could this be a Vercel/Stripe template?")
 
 ---
@@ -104,7 +105,7 @@ After completing work, verify against design intent:
 
 > AI converges toward generic, "on distribution" outputs — the "AI slop" aesthetic. Every choice must actively resist this.
 
-> **NeonDash/GPUS projects:** Use the `gpus-theme` skill for canonical enforcement — it contains brand-specific font exceptions, the Ten Forbidden Defaults table, alternative layout patterns, motion rules, usability research, and AI interface patterns. The general guidelines below apply to all projects.
+> **Projects with custom design-tokens skill:** Invoke that skill for canonical enforcement — it contains brand-specific font exceptions, forbidden defaults table, alternative layout patterns, motion rules, usability research, and AI interface patterns. The general guidelines below apply to all projects.
 
 **Typography:** Choose beautiful, unique, interesting fonts. Generic fonts (Inter, Roboto, Arial, Lato, Montserrat, system fonts) are forbidden defaults.
 
@@ -184,26 +185,26 @@ Apply when implementing AI-powered features (chat, copilots, generative tools �
 ### Component Design
 
 1. **Reusable or one-off?** One-off → co-locate with usage. Reusable → extract to `components/`
-2. **Where does state belong?** Component-specific → useState. Shared → Context. Server data → TanStack Query
-3. **Will this cause re-renders?** Expensive computation → useMemo/useCallback (only after measuring)
+2. **Where does state belong?** Component-specific → local state. Shared → Context. Server data → query/cache library (TanStack Query, SWR, RTK Query, equivalent)
+3. **Will this cause re-renders?** Expensive computation → memoize (only after measuring)
 4. **Is this accessible?** Keyboard navigation, screen reader, focus management
 
 ### State Management Hierarchy
 
-1. **Server State** → TanStack Query (caching, refetching, deduping)
+1. **Server State** → query/cache library (caching, refetching, deduping)
 2. **URL State** → searchParams (shareable, bookmarkable)
-3. **Global State** → Zustand (rarely needed)
+3. **Global State** → store library (rarely needed)
 4. **Context** → Shared but not global
 5. **Local State** → Default choice
 
 ### Real-Time Features
 
 | Requirement | Pattern |
-|-------------|---------|
-| Live data updates | TanStack Query + `refetchInterval` or WebSocket subscription |
+|---|---|
+| Live data updates | Query library + `refetchInterval` or WebSocket subscription |
 | Push notifications | Server-Sent Events (SSE) |
 | Live collaboration | WebSocket + presence indicators |
-| Optimistic UI | `useMutation` → `onMutate` applies local update, `onError` rolls back via `queryClient.setQueryData` |
+| Optimistic UI | Mutation → `onMutate` applies local update, `onError` rolls back via cache setter |
 | Connection state | Track `WebSocket.readyState`, show reconnecting indicator in UI |
 
 Optimistic UI rule: always use `onSettled` to refetch — never trust optimistic state as ground truth.
@@ -216,24 +217,24 @@ When invoked for refactoring (not new feature work), follow this priority order 
 
 ### Pre-Refactor Checklist
 
-- [ ] Confirm existing test coverage for the target area — if none, WRITE TESTS FIRST per `.claude/docs/test-protocol.md`
+- [ ] Confirm existing test coverage for the target area — if none, WRITE TESTS FIRST
 - [ ] Read the subdirectory `AGENTS.md` covering the target path
-- [ ] Score the change via `.claude/docs/design-specs/00-lever-philosophy.md` — prefer extending existing code when LEVER favors it
+- [ ] Score the change via LEVER principle (extend > create) — prefer extending existing code
 - [ ] Confirm the refactor stays within the originally requested scope (no opportunistic cleanup)
 
 ### Priorities (in order)
 
 1. **Remove dead code and unused imports** — lowest risk, highest signal
-2. **Extract repeated logic into `packages/shared`** — only when duplicated in 3+ places
+2. **Extract repeated logic into shared module** — only when duplicated in 3+ places
 3. **Improve type safety** — remove `any`, narrow types, replace `as` with type guards
 4. **Reduce component complexity** — split components >200 lines or >3 responsibilities
-5. **Optimize re-renders** — memoization, stable references, `React.memo` on hot-path list items
+5. **Optimize re-renders** — memoization, stable references, memo on hot-path list items
 6. **Improve DB query efficiency** — N+1 detection, missing indexes (coordinate with backend)
 
 ### Post-Refactor
 
-- [ ] Run full commit protocol (`.claude/docs/quality-gates.md § Commit Agent Protocol`)
-- [ ] If a non-obvious pattern was discovered, append an entry to `.claude/docs/design-specs/00-frontend-learnings.md`
+- [ ] Run quality gates per `_shared.md` § 1
+- [ ] If a non-obvious pattern was discovered, append to project learnings doc (`docs/frontend-learnings.md` or `${overlay}/...`)
 
 ---
 

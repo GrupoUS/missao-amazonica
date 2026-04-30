@@ -1,86 +1,74 @@
 # SEO Optimization Playbook
 
-Use this playbook when improving indexability for `neondash.com.br`.
+> Generic SEO baseline. Project-specific routes/locale/branding live in `${overlay}/seo-supplement.md` (loaded by `performance-optimization` skill).
 
 ## Phase 0 — Discover First
 
 Always confirm stack before implementation:
 
-- frontend framework and router (`Next.js App Router` vs `Vite + TanStack Router`)
-- existing robots/sitemap files and runtime endpoints
-- private and dynamic routes that must not be indexed
-- metadata strategy (global + route-level)
+- Frontend framework + router (Next.js App Router · Astro · Remix · SvelteKit · Vite + TanStack Router · Nuxt · etc.)
+- Existing `robots.txt` / `sitemap.xml` (real files vs SPA HTML fallback)
+- Private + dynamic routes that must NOT be indexed
+- Metadata strategy (global + route-level)
 
-Current project baseline (verified):
-
-- frontend is `Vite + React + TanStack Router` (not Next.js App Router)
-- no `app/robots.ts` or `app/sitemap.ts` structure exists
-- no `apps/web/public/robots.txt` and no `apps/web/public/sitemap.xml`
-- `https://neondash.com.br/robots.txt` and `/sitemap.xml` currently return SPA HTML (`text/html`), not real robots/sitemap content
-
-## Project Baseline Findings Table
+## Project baseline findings table
 
 Use this table in every SEO execution report:
 
 | # | Finding | Confidence (1-5) | Source | Impact |
-|---|---------|-----------------|--------|--------|
-| 1 | Current robots.txt status | 5 | `apps/web/public` + curl response | High |
-| 2 | Sitemap generation strategy | 5 | `apps/web/public` + curl response | High |
-| 3 | Existing metadata patterns | 5 | `apps/web/index.html` | Medium |
-| 4 | Dynamic/private routes needing exclusion | 5 | `apps/web/src/routeTree.gen.ts` + `routes/_dashboard.tsx` | High |
-| 5 | Core Web Vitals current state | 4 | Lighthouse run artifacts | High |
+|---|---|---|---|---|
+| 1 | Current `robots.txt` status | 5 | `${paths.frontendRoot}/public/` + curl | High |
+| 2 | Sitemap generation strategy | 5 | framework config + curl | High |
+| 3 | Existing metadata patterns | 5 | `index.html` / layout component | Medium |
+| 4 | Dynamic / private routes needing exclusion | 5 | router file (`routeTree.gen.ts`, `routes/`, `pages/`, `app/`) | High |
+| 5 | Core Web Vitals current state | 4 | Lighthouse / PSI run | High |
 
-## Edge Cases to Check (Minimum)
+## Edge cases (minimum)
 
-1. Authenticated routes indexed by accident (`/meu-dashboard`, `/clientes`, `/pacientes`, `/workspace`, `/configuracoes`).
-2. Tokenized routes indexed (`/unsubscribe/$token`).
+1. Authenticated routes accidentally indexed (typically `/dashboard`, `/admin`, `/account`, `/settings`).
+2. Tokenized routes indexed (e.g., `/unsubscribe/$token`, `/verify/$id`).
 3. Missing canonical for public legal/onboarding pages.
 4. Missing `og:image` absolute URL for public sharing.
 5. Sitemap present but serving HTML fallback instead of XML.
-6. robots/sitemap returning 200 with wrong content-type (`text/html` instead of `text/plain`/`application/xml`).
+6. `robots.txt` / `sitemap.xml` returning 200 with wrong content-type.
 
-## Implementation Strategy
+## Implementation strategies (per framework)
 
-### A) Next.js App Router projects (reference pattern)
+### A) Next.js App Router
 
-Use native metadata files:
-
+Native metadata files:
 - `app/robots.ts`
 - `app/sitemap.ts`
 - `metadataBase` in `app/layout.tsx`
 
-For robots policy, always disallow private routes and keep crawler allowlist behavior safe:
+Robots policy: disallow at least `/api/`, `/dashboard/`, `/admin/`, `/_next/`, `/auth/`. Include `sitemap` and `host`. Never globally block all crawlers.
 
-- disallow at least: `/api/`, `/dashboard/`, `/admin/`, `/_next/`, `/auth/`
-- include `sitemap` and `host`
-- do not globally block all crawlers
+### B) Astro
 
-### B) Current NeonDash stack (Vite + TanStack Router + Hono)
+- `src/pages/robots.txt.ts` (or `public/robots.txt` static)
+- `@astrojs/sitemap` integration in `astro.config.mjs`
+- Per-page `<head>` metadata via layout slots
 
-Use static assets served by frontend build output:
+### C) Vite + client-side router (TanStack Router / React Router)
 
-- create `apps/web/public/robots.txt`
-- create `apps/web/public/sitemap.xml`
+Static assets only:
+- `${paths.frontendRoot}/public/robots.txt`
+- `${paths.frontendRoot}/public/sitemap.xml` (or generate at build)
 
-Recommended `robots.txt` policy for this repo:
+For dynamic SEO on a SPA stack, consider SSR / prerendering — pure SPA hurts indexability.
+
+### D) Generic robots.txt template
 
 ```txt
 User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /dashboard/
-Disallow: /meu-dashboard/
-Disallow: /configuracoes/
-Disallow: /clientes/
-Disallow: /pacientes/
-Disallow: /workspace/
-Disallow: /chat/
-Disallow: /financeiro/
-Disallow: /crm/
-Disallow: /ai-agents/
 Disallow: /admin/
-Disallow: /unsubscribe/
+Disallow: /auth/
+# Add per-project private routes from ${overlay}/seo-supplement.md
 
+# AI crawlers — opt-in only
 User-agent: GPTBot
 Disallow: /
 
@@ -90,69 +78,81 @@ Disallow: /
 User-agent: anthropic-ai
 Disallow: /
 
-Sitemap: https://neondash.com.br/sitemap.xml
-Host: https://neondash.com.br
+Sitemap: ${project.productionUrl}/sitemap.xml
+Host: ${project.productionUrl}
 ```
 
-Sitemap rules for this repo:
+### Sitemap rules
 
-- include only public pages (for example: `/`, `/termos`, `/privacidade`, `/comece-aqui`, `/primeiro-acesso`, `/account-deletion`)
-- exclude private/authenticated and tokenized routes
-- include `<lastmod>` for every URL
+- Include only public pages
+- Exclude private + tokenized routes
+- Include `<lastmod>` for every URL
+- Use absolute URLs
 
-## Metadata Rules
+## Metadata rules
 
-For Next.js projects:
+- Always set `metadataBase` (Next.js) or equivalent base URL
+- Title template per page (e.g., `%s | ${project.displayName}`)
+- Canonical + OG/Twitter image metadata on every public page
+- Meaningful images: descriptive `alt`. Decorative: empty `alt` + `aria-hidden`
 
-- always set `metadataBase`
-- always use title template (`%s | NeonDash`)
-- always set canonical and OG/Twitter image metadata
+## Schema.org (JSON-LD)
 
-For current Vite project:
+Minimum on home + key pages:
+- `Organization` / `NGO` / `LocalBusiness` (per project type)
+- `WebSite`
+- `BreadcrumbList`
+- Content-type-specific (`Article`, `Product`, `FAQPage`, `Event`, `Recipe`, etc.)
 
-- maintain base metadata in `apps/web/index.html`
-- add route-level title/description/canonical management for public pages only
-- ensure meaningful images do not use empty `alt` text
+Project-specific schemas live in `${overlay}/seo-supplement.md`.
 
-## CWV Targets
+## CWV targets
 
-- `LCP < 2.5s`
-- `INP < 200ms`
-- `CLS < 0.1`
-- `TTFB < 600ms`
+Read from `.claude/config.json::gates`:
+- LCP < `${gates.lcp}`ms
+- INP < `${gates.inp}`ms
+- CLS = `${gates.cls}`
+- TTFB < 600ms
 
-## Validation Commands
+## Validation commands
 
 ```bash
 # Robots and sitemap must be real files (not SPA HTML)
-curl -I https://neondash.com.br/robots.txt
-curl -I https://neondash.com.br/sitemap.xml
+curl -I ${project.productionUrl}/robots.txt
+curl -I ${project.productionUrl}/sitemap.xml
 
 # Verify content type + payload start
 python - <<'PY'
 import urllib.request
-for u in ['https://neondash.com.br/robots.txt','https://neondash.com.br/sitemap.xml']:
+for u in ['${project.productionUrl}/robots.txt', '${project.productionUrl}/sitemap.xml']:
     with urllib.request.urlopen(u, timeout=30) as r:
         body = r.read(80).decode('utf-8', errors='replace')
         print(u, r.status, r.headers.get('content-type'), repr(body))
 PY
 
 # PSI API SEO check
-curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=https://neondash.com.br&strategy=mobile&category=seo&locale=pt-BR" | jq '{seo: (.lighthouseResult.categories.seo.score * 100 | round)}'
+curl -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${project.productionUrl}&strategy=mobile&category=seo&locale=${project.locale}" \
+  | jq '{seo: (.lighthouseResult.categories.seo.score * 100 | round)}'
 ```
 
-## Non-Negotiable Constraints
+## Non-negotiable constraints
 
-- Never index private areas (`/api/`, `/dashboard/`, `/admin/`, `/auth/`, and equivalent private business paths).
-- Never apply Next.js `app/robots.ts` guidance to non-Next stacks.
-- Never ship sitemap entries without `lastmod`.
-- Never block all crawlers globally.
-- Never skip post-deploy curl validation.
+- Never index private areas (`/api/`, `/dashboard/`, `/admin/`, `/auth/`, project-specific private paths from overlay)
+- Never apply Next.js-specific guidance to non-Next stacks
+- Never ship sitemap entries without `lastmod`
+- Never block all crawlers globally
+- Never skip post-deploy curl validation
 
-## Success Criteria
+## Success criteria
 
-- `/robots.txt` returns 200 with `text/plain` and expected disallow rules.
-- `/sitemap.xml` returns 200 with XML content-type and valid URL set.
-- URLs in sitemap return 200 and are public pages.
-- Lighthouse SEO score reaches `>= 0.95` on production.
-- Public pages have unique and stable title/description/canonical strategy.
+- `/robots.txt` returns 200 with `text/plain` + expected disallow rules
+- `/sitemap.xml` returns 200 with XML content-type + valid URL set
+- URLs in sitemap return 200 + are public pages
+- Lighthouse SEO score reaches `>= ${gates.lighthouse.seo}` on production
+- Public pages have unique + stable title/description/canonical strategy
+
+## AI-citation readiness (GEO)
+
+- Author bylines, publication dates, source links — make it easy for LLM crawlers to cite
+- Schema.org `Article` with `author`, `datePublished`, `dateModified`
+- Avoid hidden text / cloaking — adversarial against LLM crawl

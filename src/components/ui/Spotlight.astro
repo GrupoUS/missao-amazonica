@@ -1,0 +1,77 @@
+---
+/**
+ * Spotlight — subtle radial-gradient cursor follower for the landing hero.
+ * CSS-only animation (transform/opacity-safe). Skips mobile (≥ lg only).
+ * Place inside a positioned parent — fills it absolutely.
+ */
+interface Props {
+  class?: string;
+  /** Hex (with alpha) or token reference for the highlight tint. */
+  tint?: string;
+}
+
+const { class: className, tint = 'var(--color-secondary-container)' } = Astro.props as Props;
+---
+
+<div
+  class:list={['spotlight', className]}
+  aria-hidden="true"
+  style={`--spotlight-tint: ${tint};`}
+>
+</div>
+
+<style>
+  .spotlight {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0;
+    transition: opacity 600ms ease-out;
+    background: radial-gradient(
+      640px circle at var(--mx, 50%) var(--my, 50%),
+      var(--spotlight-tint),
+      transparent 50%
+    );
+    mix-blend-mode: multiply;
+  }
+
+  @media (min-width: 1024px) {
+    .spotlight {
+      opacity: 0.18;
+    }
+  }
+
+  :global(.dark) .spotlight {
+    mix-blend-mode: screen;
+  }
+
+  @media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+    .spotlight {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  (() => {
+    const spotlights = document.querySelectorAll<HTMLElement>('.spotlight');
+    if (spotlights.length === 0) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+
+    let pending = false;
+    const onMove = (event: MouseEvent) => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        spotlights.forEach((el) => {
+          const rect = el.getBoundingClientRect();
+          el.style.setProperty('--mx', `${event.clientX - rect.left}px`);
+          el.style.setProperty('--my', `${event.clientY - rect.top}px`);
+        });
+        pending = false;
+      });
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+  })();
+</script>

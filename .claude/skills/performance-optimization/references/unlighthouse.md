@@ -6,7 +6,7 @@ For full-site crawling and multi-page audits. Requires Node 20+ and Chrome.
 
 ```bash
 # One-off run (no install)
-npx unlighthouse --site https://staging.neondash.com.br
+npx unlighthouse --site ${project.stagingUrl}
 
 # Or install globally
 bun add -g @unlighthouse/cli unlighthouse
@@ -16,18 +16,18 @@ bun add -g @unlighthouse/cli unlighthouse
 
 ```bash
 # Quick site scan (mobile, throttled)
-npx unlighthouse --site https://staging.neondash.com.br --throttle --samples 1
+npx unlighthouse --site ${project.stagingUrl} --throttle --samples 1
 
 # Specific routes only
-npx unlighthouse --site https://staging.neondash.com.br \
-  --urls /,/financeiro,/dashboard,/crm,/pacientes \
+npx unlighthouse --site ${project.stagingUrl} \
+  --urls /,/dashboard,/<your-routes> \
   --throttle --samples 1
 
 # Desktop mode
-npx unlighthouse --site https://staging.neondash.com.br --desktop
+npx unlighthouse --site ${project.stagingUrl} --desktop
 
 # No cache (fresh scan)
-npx unlighthouse --site https://staging.neondash.com.br --no-cache
+npx unlighthouse --site ${project.stagingUrl} --no-cache
 ```
 
 ## Configuration File
@@ -37,7 +37,7 @@ npx unlighthouse --site https://staging.neondash.com.br --no-cache
 import { defineUnlighthouseConfig } from 'unlighthouse'
 
 export default defineUnlighthouseConfig({
-  site: 'https://staging.neondash.com.br',
+  site: '${project.stagingUrl}',
   scanner: {
     device: 'mobile',
     samples: 1,

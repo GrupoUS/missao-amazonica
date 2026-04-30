@@ -1,94 +1,74 @@
-# Claude Code Hooks - NeonDash
+# Claude Code Hooks
 
-## Visão Geral
+## Overview
 
-Este projeto usa hooks Claude Code para aumentar autonomia de agentes enquanto mantém guardrails de segurança.
-Todos os hooks são **Python 3** (`.py`) — shell scripts são proibidos neste projeto.
+Hooks increase agent autonomy while keeping safety guardrails. All hooks are **Python 3** (`.py`) — shell scripts intentionally avoided for portability across Windows / macOS / Linux.
 
-## Kilo CLI
+Project-specific values (project name, package manager, protected paths) come from `.claude/config.json` and `${overlay}/...`. Hooks read these at runtime — no per-project edits needed.
 
-- O Kilo CLI atual nao le a chave `hooks` do `kilo.json`; o schema oficial e o `kilo debug config` resolvido nao expunham hooks nativos.
-- A ativacao no Kilo agora acontece via plugin de projeto em `.kilo/kilo.json` apontando para `.kilo/plugins/claude-hooks.mjs`.
-- Esse plugin usa apenas pontos viaveis do Kilo hoje: `experimental.chat.system.transform`, `tool.execute.before`, `tool.execute.after`, `shell.env` e `event`.
-- No Kilo eu nao repliquei conceitos sem equivalente real, como status line ou hooks Claude-especificos sem callback publico.
-- Os subagentes Kilo referenciados pelos workflows agora existem em `.kilo/agent/` e podem ser chamados diretamente pelo `task` tool: `debugger`, `frontend-specialist`, `project-planner`, `performance-optimizer`, `mobile-developer`, `explorer`, alem de `explore`, `librarian` e `evaluator`.
-- O bridge injeta contexto especifico para esses subagentes no `task` tool e bloqueia nomes que nao existem na configuracao local do Kilo.
-- O bridge do Kilo tambem executa `task_routing_guard.py` antes de cada `task`; hoje ele valida o subagente e so cobra `run_in_background` quando o runtime realmente expor esse campo.
-- Evidencias de execucao do bridge ficam em `.claude/logs/kilo-hooks-plugin.jsonl`, `.claude/logs/kilo-hooks-events.jsonl` e `.claude/logs/kilo-subagent-events.jsonl`.
-
-## Hooks Configurados
+## Configured hooks
 
 ### SessionStart
-
-- **session_context.py**: Carrega `AGENTS.md` via `additionalContext` (padrão universal cross-platform) + contexto do projeto (branch, gates)
+- **session_context.py** — loads `AGENTS.md` via `additionalContext` (cross-platform standard) + project tag (from `config.json::project.name` + `tooling.packageManager`) + git branch.
 
 ### PreToolUse
-
-- **smart_bash_approver.py**: Auto-aprova comandos seguros, bloqueia perigosos
-- **protect_files.py**: Bloqueia modificação de arquivos sensíveis
-- **task_routing_guard.py**: Bloqueia subagent inválido e reforça Task com roteamento correto
-
-### PermissionRequest
-
-- Auto-aprova Read/Grep/Glob/Bash/Edit/Write tools
+- **smart_bash_approver.py** — auto-approves safe commands (read-only git, bun/npm/pnpm/yarn build/test/lint, version checks, common DB CLIs); blocks dangerous patterns (`rm -rf /`, `DROP DATABASE`, force-push to main); asks on cleanup operations.
+- **protect_files.py** — blocks edits to sensitive files. Generic defaults: `.env*`, lockfiles, `.git/`. Per-project additions read from `config.json::protectedFiles` + `${overlay}/protected-files.json`.
+- **task_routing_guard.py** — validates subagent name + enforces `run_in_background` when runtime exposes the field.
 
 ### PostToolUse
-
-- **ultracite_fix.py**: Formata (Biome) + lint fix (OXLint) após edição
+- **ultracite_fix.py** — runs project formatter/linter after edit (Biome / Prettier / equivalent — read from config).
 
 ### Stop
-
-- **ultracite_check.py**: Verifica lint (OXLint) antes de parar — bloqueia em erros
-- **background_cleanup.py**: Registra evento de parada para observabilidade
+- **ultracite_check.py** — verifies lint before stopping; blocks on errors.
+- **background_cleanup.py** — logs stop event for observability.
 
 ### SubagentStart
-
-- **subagent_start.py**: Injeta contexto quando subagentes iniciam
+- **subagent_start.py** — injects context when subagents launch.
 
 ### SubagentStop
-
-- **subagent_log.py**: Log de eventos de subagentes para observabilidade
-- **evaluator_escalation.py**: Sinaliza escalonamento para evaluator (Mode 3) em falhas repetidas
+- **subagent_log.py** — logs subagent events to `.claude/logs/subagent-events.jsonl`.
+- **evaluator_escalation.py** — flags escalation to evaluator (Mode 3) on repeated failures.
 
 ### TaskCompleted
-
-- **task_completed.py**: Log de conclusão de tasks em equipes
-
-### TeammateIdle
-
-- Auto-aprova idle (evita notificações desnecessárias)
+- **task_completed.py** — logs team task completions.
 
 ### Notification
-
-- **notify.py**: Notificações desktop (WSL/Linux/macOS)
+- **notify.py** — desktop notifications (WSL / Linux / macOS).
 
 ---
 
-## Comandos Seguros (Auto-aprovados)
+## Auto-approved commands (examples)
 
 ```bash
-# Git
-git status, git diff, git log, git branch, git fetch
+# Git read-only
+git status, git diff, git log, git branch, git fetch, git show
 
-# File system
-ls, cat, head, tail, grep, find, which, pwd, echo
+# Filesystem read
+ls, cat, head, tail, grep, rg, find, which, pwd, echo, tree, stat, wc
 
-# Bun/Node
-bun test, bun run check, bun run lint, bun install, bun x, bun run build
-npm test, npm run lint, npm run build
-bunx oxlint, bunx biome, bunx ultracite
+# Package managers (any of: bun / npm / pnpm / yarn)
+<pm> install, <pm> run test, <pm> run lint, <pm> run build, <pm> run dev
+bunx / npx / pnpm dlx / yarn dlx
+
+# Type checkers
+tsc, tsgo
+
+# Database / cloud CLIs (read-only introspection)
+neonctl, supabase, fly, vercel, railway, wrangler
+psql, mysql, sqlite3
 
 # Version checks
-python3 --version, node --version, bun --version
+python --version, node --version, bun --version, etc.
 ```
 
 ---
 
-## Comandos Bloqueados (Sempre)
+## Always-blocked commands
 
 ```bash
 # Destructive
-rm -rf /, rm -rf ~, rm -rf *, rm -rf $HOME
+rm -rf /, rm -rf ~, rm -rf $HOME
 
 # Database
 DROP DATABASE, DROP TABLE, TRUNCATE
@@ -98,59 +78,55 @@ git push --force main, git push --force master, git reset --hard HEAD~
 
 # System
 chmod -R 777 /, dd if=... of=/dev/, :(){ :|:& };:
-sudo rm, truncate -s 0
+sudo rm, truncate -s 0, mkfs
 ```
 
 ---
 
-## Arquivos Protegidos
+## Protected files
 
-Estes arquivos não podem ser editados via hooks:
+Defaults (every project):
 
-| Pattern                              | Razão           |
-| ------------------------------------ | --------------- |
-| `.env*`                              | Credenciais     |
-| `credentials`, `secrets`, `api-keys` | Dados sensíveis |
-| `.git/`                              | Repositório     |
-| `package-lock.json`, `bun.lockb`     | Lockfiles       |
+| Pattern | Reason |
+|---|---|
+| `.env*` | Credentials |
+| `credentials/`, `secrets/`, `api-keys/` | Sensitive data |
+| `.git/` | Repository state |
+| `bun.lockb`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock` | Lockfiles |
+
+Add per-project entries via `.claude/config.json::protectedFiles` or `${overlay}/protected-files.json` (e.g., migration directories, infra config).
 
 ---
 
-## Testando Hooks
+## Testing hooks
 
 ```bash
-# Testar aprovação de comando seguro
+# Test safe command approval
 echo '{"tool_input":{"command":"bun test"}}' | python3 .claude/hooks/smart_bash_approver.py
 # Expected: {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}
 
-# Testar bloqueio de comando perigoso
+# Test dangerous command block
 echo '{"tool_input":{"command":"rm -rf /"}}' | python3 .claude/hooks/smart_bash_approver.py
-# Expected: {"hookSpecificOutput":{"...permissionDecision":"deny"...}}
+# Expected: deny
 
-# Testar proteção de arquivo
+# Test file protection
 echo '{"tool_input":{"file_path":"./.env"}}' | python3 .claude/hooks/protect_files.py
-# Expected: {"hookSpecificOutput":{"...permissionDecision":"deny"...}}
+# Expected: deny
 ```
 
 ---
 
 ## Logs
 
-Eventos de subagentes são logados em:
-
 ```
 .claude/logs/subagent-events.jsonl
+.claude/logs/evaluator-escalation.jsonl
+.claude/logs/evaluator-failure-count.txt
 ```
 
-Formato:
-
+Format example:
 ```json
-{
-  "timestamp": "2025-02-17T12:00:00Z",
-  "agent": "debugger",
-  "status": "completed",
-  "duration_ms": "5000"
-}
+{"timestamp": "2026-04-30T12:00:00Z", "agent": "debugger", "status": "completed", "duration_ms": 5000}
 ```
 
 ---
@@ -158,40 +134,33 @@ Formato:
 ## Debug
 
 ```bash
-# Ver hooks ativos no Claude Code
-/hooks
-
-# Debug mode (ver execução de hooks)
-claude --debug
-
-# Verbose mode (output de hooks no transcript)
-Ctrl+O
+/hooks                # show active hooks in Claude Code
+claude --debug        # debug mode (hook execution trace)
+Ctrl+O                # verbose mode in transcript
 ```
 
 ---
 
-## Arquitetura
+## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                      HOOK FLOW                                │
 ├──────────────────────────────────────────────────────────────┤
 │                                                                │
-│  SessionStart ───► session_context.py ──► AGENTS.md + contexto │
+│  SessionStart ───► session_context.py ──► AGENTS.md + tag     │
 │                                                                │
 │  PreToolUse ─────► smart_bash_approver.py (Bash)              │
-│               ├──► protect_files.py (Edit|Write)              │
+│               ├──► protect_files.py (Edit / Write)            │
 │               └──► task_routing_guard.py (Agent)              │
 │                        │                                       │
 │                        ▼                                       │
 │               ┌─────────────────┐                              │
 │               │ ALLOW / DENY /  │                              │
-│               │     ASK         │                              │
+│               │ ASK             │                              │
 │               └─────────────────┘                              │
 │                                                                │
-│  PermissionRequest ──► Auto-approve read/write tools          │
-│                                                                │
-│  PostToolUse ────► ultracite_fix.py (biome + oxlint fix)      │
+│  PostToolUse ────► ultracite_fix.py (formatter + lint fix)    │
 │                                                                │
 │  SubagentStart ──► subagent_start.py (context injection)      │
 │  SubagentStop ───► evaluator_escalation.py + subagent_log.py  │
@@ -201,7 +170,6 @@ Ctrl+O
 │  Stop ───────────► ultracite_check.py + background_cleanup.py │
 │                                                                │
 │  Notification ───► notify.py (desktop toast)                  │
-│                                                                │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -209,24 +177,13 @@ Ctrl+O
 
 ## Rollback
 
-Se hooks causarem problemas:
+If hooks cause problems:
 
 ```bash
-# Quick disable: remover "hooks" section do settings.json
+# Quick disable: remove "hooks" section from settings.json
 
 # Full rollback:
 git checkout .claude/settings.json
 rm .claude/hooks/*.py
 rm -rf .claude/logs
 ```
-
----
-
-## Impacto
-
-| Métrica                       | Antes   | Depois         |
-| ----------------------------- | ------- | -------------- |
-| Aprovações manuais/dia        | ~50     | ~10            |
-| Tempo em permissões           | ~15min  | ~3min          |
-| Risco de comandos perigosos   | Médio   | Baixo          |
-| Observabilidade de subagentes | Nenhuma | Logs completos |
