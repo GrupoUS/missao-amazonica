@@ -21,16 +21,37 @@ port = 54323
 
 [auth]
 enabled = true
-site_url = "http://localhost:4321"
-additional_redirect_urls = ["http://localhost:4321/admin/login"]
+site_url = "https://missao-amazonica.vercel.app"
+additional_redirect_urls = [
+  "https://missao-amazonica.vercel.app/admin/redefinir-senha",
+  "https://missao-amazonica.vercel.app/admin/login",
+  "https://missao-amazonica.vercel.app/admin",
+  "https://missao-amazonica-*.vercel.app/admin/redefinir-senha",
+  "https://missao-amazonica-*.vercel.app/admin/login",
+  "https://missao-amazonica-*.vercel.app/admin",
+  "http://localhost:4321/admin/redefinir-senha",
+  "http://localhost:4321/admin/login",
+  "http://localhost:4321/admin",
+]
 jwt_expiry = 3600
 enable_signup = false
 enable_anonymous_sign_ins = false
+minimum_password_length = 8
 
 [auth.email]
 enable_signup = false
 double_confirm_changes = true
 enable_confirmations = false
+secure_password_change = true
+
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "missao@missaoamazonica.org"
+sender_name = "Missão Amazônica"
 
 [storage]
 enabled = true
