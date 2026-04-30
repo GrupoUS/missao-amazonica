@@ -22,7 +22,7 @@ Detailed execution flows, key rules, and common patterns for each debug pack.
 - NEVER fix without capturing initial screenshot first
 - NEVER interact with page without calling `agent-browser snapshot` first (refs invalidate after DOM changes)
 - Choose browser mode: headless for public pages, CDP for authenticated pages (see `references/browser-setup.md`)
-- Default target: `https://staging.neondash.com.br` (override with `url=` argument)
+- Default target: `${project.stagingUrl}` from `.claude/config.json` (override with `url=` argument)
 - In CDP mode, do NOT call `agent-browser close` — it kills the user's Chrome session
 
 **Common frontend patterns:**

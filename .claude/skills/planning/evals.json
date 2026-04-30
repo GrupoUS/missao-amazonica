@@ -131,7 +131,7 @@
     },
     {
       "id": "T05",
-      "input": "Quick, I need to add a simple CSV export button to the /financeiro page. Just do it, no need to plan.",
+      "input": "Quick, I need to add a simple CSV export button to the financial summary page. Just do it, no need to plan.",
       "expected_assertions": ["A01", "A02", "A03", "A05"]
     },
     {

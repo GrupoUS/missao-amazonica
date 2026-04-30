@@ -134,7 +134,7 @@ For full pattern detail: `references/consolidated-domain-rules.md` (rules synthe
 | `references/methodology.md` | 4-phase debugging method, 5 Whys, git bisect, debug report templates |
 | `references/verification.md` | Defense-in-depth, regression prevention, postmortem template |
 | `references/patterns.md` | Async testing, testing pyramid, OWASP security checklist |
-| `references/consolidated-domain-rules.md` | Cross-stack bug patterns (legacy — being split into generic + overlay) |
+| `${overlay}/debugger-domain-rules.md` | Cross-stack bug patterns (project-specific — loaded if overlay configured) |
 | `${overlay}/anti-patterns.md` | **Project-specific** anti-patterns (loaded if overlay configured) |
 | `../../scripts/cdp.py` | Primary CDP tool (browser control via Node.js CDP client) |
 | `../../scripts/cdp-tool.js` | Node.js CDP client |

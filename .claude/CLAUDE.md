@@ -71,7 +71,7 @@ Classify the request before acting:
 
 If `${overlay}/routing-supplements.md` exists, also load project-specific routing rows (e.g., domain flows, payment providers, custom paths).
 
-`.claude/rules/*.md` are generic templates. Project authority lives in `${overlay}/rules/*.md` when present — load overlay first, fall back to generic.
+> **Rule resolution.** When the routing matrix points at `.claude/rules/<file>.md`, the agent MUST resolve overlay-first: check `${overlay}/rules/<file>.md` and read it instead if present. The generic `.claude/rules/<file>.md` is a fallback scaffold. **Never read both** — pick one. See `_shared.md § 0` for the resolution recipe.
 
 ---
 

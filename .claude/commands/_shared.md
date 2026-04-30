@@ -42,13 +42,37 @@ Substitution placeholders used in commands (resolve at runtime):
 
 | File | Purpose |
 |---|---|
+| `${overlay}/CLAUDE-overlay.md` | Project identity + cardinal rules (loaded after generic CLAUDE.md as Tier 1 supplement) |
 | `${overlay}/anti-patterns.md` | Project-specific bug patterns (loaded by `/debug`, `debugger` skill) |
 | `${overlay}/routing-supplements.md` | Project-specific routing matrix rows (loaded by `/prime`, `/implement`) |
 | `${overlay}/verify-supplements.md` | Project-specific smoke tests (loaded by `/verify`) |
 | `${overlay}/layer-map.md` | Project-specific layer map (loaded by `planning` skill) |
 | `${overlay}/seo-supplement.md` | Project-specific SEO routes/locale (loaded by `performance-optimization`) |
+| `${overlay}/debugger-domain-rules.md` | Project anti-pattern catalog (loaded by `debugger` skill if overlay configured) |
+| `${overlay}/protected-files.json` | Extra protected paths (loaded by `protect_files.py` hook) |
 
 If overlay directory missing → commands run with generic defaults.
+
+### Rule file resolution (overlay-first)
+
+Whenever a command or skill says "read `.claude/rules/<file>.md`", the agent **MUST** resolve it as:
+
+1. If `${overlay}/rules/<file>.md` exists → read **that** (project authority, concrete stack rules)
+2. Else → fall back to `.claude/rules/<file>.md` (generic template)
+
+This applies to all six rule files: `backend.md`, `database.md`, `frontend.md`, `integrations.md`, `stability.md`, `DESIGN.md`.
+
+```bash
+# Resolution helper pattern
+RULE=backend.md
+if [ -f "${overlay}/rules/$RULE" ]; then
+  cat "${overlay}/rules/$RULE"           # project authority (concrete)
+else
+  cat ".claude/rules/$RULE"              # generic template (scaffold)
+fi
+```
+
+The generic templates exist as scaffolds for projects without an overlay. **Never read both at once** — pick one, in this order. The overlay version is authoritative when present.
 
 ---
 

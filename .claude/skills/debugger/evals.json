@@ -119,7 +119,7 @@
     },
     {
       "id": "T04",
-      "input": "Users report seeing data from other tenants on the /financeiro page. This is a cross-tenant data leak.",
+      "input": "Users report seeing data from other tenants on the financial summary page. This is a cross-tenant data leak.",
       "expected_assertions": ["A01", "A02", "A03", "A04", "A05", "A10", "A11", "A12", "A13"]
     },
     {
