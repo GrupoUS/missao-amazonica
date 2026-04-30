@@ -1,0 +1,44 @@
+---
+import Icon from '@/components/ui/Icon.astro';
+import { formatBRL } from '@/lib/format/currency';
+import { formatRelative } from '@/lib/format/date';
+import { initials } from '@/lib/utils';
+import type { PublicDonorListView } from '@/lib/supabase/aliases';
+
+interface Props {
+  donors: PublicDonorListView[];
+  limit?: number;
+}
+
+const { donors, limit = 8 } = Astro.props;
+const list = donors.slice(0, limit);
+---
+
+<section class="bg-surface-container-lowest rounded-xl p-md shadow-card border border-outline-variant/30">
+  <h4 class="font-display text-body-lg font-semibold text-on-surface mb-md">Doadores Recentes</h4>
+  {list.length === 0 ? (
+    <p class="type-caption text-on-surface-variant py-sm">
+      Seja o primeiro a apoiar este projeto.
+    </p>
+  ) : (
+    <ul class="flex flex-col gap-sm">
+      {list.map((d) => (
+        <li class="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+          <div class="size-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center type-label font-semibold shrink-0">
+            {initials(d.donor_name, 2)}
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="type-label text-on-surface truncate">{d.donor_name}</span>
+            <span class="type-caption text-on-surface-variant">
+              {formatBRL(d.amount_cents ?? 0)} · {formatRelative(d.confirmed_at)}
+            </span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+  <p class="type-caption text-on-surface-variant mt-md flex items-center gap-1">
+    <Icon name="person_off" size={12} />
+    Doadores anônimos não são exibidos.
+  </p>
+</section>

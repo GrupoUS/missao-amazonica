@@ -1,0 +1,178 @@
+---
+import '@/styles/global.css';
+import Icon from '@/components/ui/Icon.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  activeNav?: 'missao' | 'projetos' | 'transparencia' | 'impacto';
+  noindex?: boolean;
+}
+
+const SITE_NAME = import.meta.env.PUBLIC_SITE_NAME || 'Missão Amazônica – Sal da Terra';
+const SITE_URL = import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321';
+
+const {
+  title = 'Missão Amazônica – Sal da Terra',
+  description = 'Levando esperança, saúde e dignidade para comunidades ribeirinhas do Rio Negro através de ações concretas e transparentes.',
+  ogImage,
+  activeNav,
+  noindex,
+} = Astro.props;
+
+const fullTitle = title === SITE_NAME ? title : `${title} · Missão Amazônica`;
+const canonical = new URL(Astro.url.pathname, SITE_URL).toString();
+const year = new Date().getFullYear();
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex,nofollow" />}
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Literata:wght@600;700&family=Nunito+Sans:wght@400;500;600;700&display=swap"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <meta name="theme-color" content="#012d1d" />
+  </head>
+  <body class="bg-background text-on-background antialiased min-h-screen flex flex-col">
+    <a href="#conteudo-principal" class="skip-link">Pular para o conteúdo</a>
+
+    <header class="bg-[#faf6f0] border-b border-primary-container/10 sticky top-0 z-40 backdrop-blur-sm">
+      <div class="flex justify-between items-center px-6 h-16 w-full max-w-7xl mx-auto">
+        <a href="/" class="font-display text-xl font-bold text-primary-container flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <span aria-hidden="true" class="inline-flex items-center justify-center size-8 rounded-full bg-primary-container text-on-primary">
+            <Icon name="hand_heart" size={18} />
+          </span>
+          {SITE_NAME.replace(' – Sal da Terra', '')}
+        </a>
+
+        <nav class="hidden md:flex items-center gap-6 font-nav text-sm font-medium" aria-label="Navegação principal">
+          <a
+            href="/#missao"
+            class:list={[
+              'px-3 py-2 rounded-md transition-colors',
+              activeNav === 'missao'
+                ? 'text-primary-container border-b-2 border-primary-container pb-1'
+                : 'text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low',
+            ]}
+          >Missão</a>
+          <a
+            href="/doar"
+            class:list={[
+              'px-3 py-2 rounded-md transition-colors',
+              activeNav === 'projetos'
+                ? 'text-primary-container border-b-2 border-primary-container pb-1'
+                : 'text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low',
+            ]}
+          >Projetos</a>
+          <a
+            href="/prestacao-de-contas"
+            class:list={[
+              'px-3 py-2 rounded-md transition-colors',
+              activeNav === 'transparencia'
+                ? 'text-primary-container border-b-2 border-primary-container pb-1'
+                : 'text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low',
+            ]}
+          >Transparência</a>
+          <a
+            href="/#impacto"
+            class:list={[
+              'px-3 py-2 rounded-md transition-colors',
+              activeNav === 'impacto'
+                ? 'text-primary-container border-b-2 border-primary-container pb-1'
+                : 'text-on-surface-variant hover:text-primary-container hover:bg-surface-container-low',
+            ]}
+          >Impacto</a>
+        </nav>
+
+        <div class="flex items-center gap-3">
+          <a
+            href="/doar"
+            class="bg-primary-container text-on-primary px-4 py-2 rounded-lg type-label hover:opacity-90 transition-opacity shadow-cta inline-flex items-center gap-2"
+          >
+            <Icon name="hand_heart" size={16} />
+            Contribuir
+          </a>
+          <a
+            href="/admin/login"
+            aria-label="Área administrativa"
+            class="text-primary-container hover:bg-surface-container-low p-2 rounded-full transition-colors hidden sm:inline-flex items-center justify-center"
+          >
+            <Icon name="account_circle" size={20} />
+          </a>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="md:hidden absolute top-4 right-20 p-2 text-primary-container"
+        aria-label="Abrir menu"
+        data-mobile-menu-toggle
+      >
+        <Icon name="filter_list" size={20} />
+      </button>
+    </header>
+
+    <main id="conteudo-principal" tabindex="-1" class="flex-grow">
+      <slot />
+    </main>
+
+    <footer class="bg-surface-container-low border-t border-outline-variant/30 mt-auto">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8 px-8 max-w-7xl mx-auto py-12">
+        <div class="md:col-span-2">
+          <div class="font-display text-lg font-semibold text-on-surface mb-3 flex items-center gap-2">
+            <span aria-hidden="true" class="inline-flex items-center justify-center size-7 rounded-full bg-primary-container text-on-primary">
+              <Icon name="hand_heart" size={14} />
+            </span>
+            {SITE_NAME}
+          </div>
+          <p class="font-nav text-xs text-on-surface-variant max-w-md mb-3">
+            Atuando todo mês de abril nas comunidades ribeirinhas do Rio Negro, com transparência e prestação de contas pública.
+          </p>
+          <p class="font-nav text-xs text-on-surface-variant">
+            © {year} Missão Amazônica – Sal da Terra. CNPJ: 00.000.000/0001-00
+          </p>
+        </div>
+        <div class="flex flex-col gap-2">
+          <h3 class="type-label text-on-surface mb-1">Plataforma</h3>
+          <a class="font-nav text-xs text-on-surface-variant hover:text-primary-container transition-colors" href="/prestacao-de-contas">Relatórios</a>
+          <a class="font-nav text-xs text-on-surface-variant hover:text-primary-container transition-colors" href="/doar">Doar agora</a>
+          <a class="font-nav text-xs text-on-surface-variant hover:text-primary-container transition-colors" href="/admin/login">Área administrativa</a>
+        </div>
+        <div class="flex flex-col gap-2">
+          <h3 class="type-label text-on-surface mb-1">Contato</h3>
+          <a class="font-nav text-xs text-on-surface-variant hover:text-primary-container transition-colors" href="mailto:contato@missaoamazonica.org">contato@missaoamazonica.org</a>
+          <span class="font-nav text-xs text-on-surface-variant">Comunidades do Rio Negro</span>
+          <span class="font-nav text-xs text-on-surface-variant">Manaus / AM</span>
+        </div>
+      </div>
+    </footer>
+
+    <noscript>
+      <style>
+        [data-reveal] {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      </style>
+    </noscript>
+  </body>
+</html>

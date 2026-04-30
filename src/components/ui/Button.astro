@@ -1,0 +1,68 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+import { cn } from '@/lib/utils';
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'outline';
+type Size = 'sm' | 'md' | 'lg';
+
+interface Props extends HTMLAttributes<'button'> {
+  variant?: Variant;
+  size?: Size;
+  href?: string;
+  type?: 'button' | 'submit' | 'reset';
+  fullWidth?: boolean;
+  class?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  href,
+  type = 'button',
+  fullWidth = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const baseClasses =
+  'inline-flex items-center justify-center gap-2 font-medium type-label transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100';
+
+const variantClasses: Record<Variant, string> = {
+  primary:
+    'bg-primary-container text-on-primary shadow-cta hover:opacity-90 rounded-lg',
+  secondary:
+    'border border-secondary text-secondary hover:bg-surface-container-low rounded-lg bg-transparent',
+  outline:
+    'border border-outline-variant text-on-surface hover:bg-surface-container-low rounded-lg bg-surface-container-lowest',
+  ghost:
+    'text-secondary hover:bg-surface-container-low rounded-lg bg-transparent',
+  destructive:
+    'bg-error text-on-error hover:opacity-90 rounded-lg',
+};
+
+const sizeClasses: Record<Size, string> = {
+  sm: 'h-9 px-3 text-xs',
+  md: 'h-11 px-5 text-sm',
+  lg: 'h-12 px-7 text-sm',
+};
+
+const classes = cn(
+  baseClasses,
+  variantClasses[variant],
+  sizeClasses[size],
+  fullWidth && 'w-full',
+  className,
+);
+---
+
+{
+  href ? (
+    <a href={href} class={classes} {...(rest as Record<string, unknown>)}>
+      <slot />
+    </a>
+  ) : (
+    <button type={type} class={classes} {...(rest as HTMLAttributes<'button'>)}>
+      <slot />
+    </button>
+  )
+}

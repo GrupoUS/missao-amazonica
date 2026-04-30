@@ -1,0 +1,94 @@
+---
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import ProgressBar from '@/components/ui/ProgressBar.astro';
+import Icon from '@/components/ui/Icon.astro';
+import { formatBRL, progressPct } from '@/lib/format/currency';
+import { urgencyToTone, urgencyLabel } from '@/components/ui/badge-helpers';
+import type { Urgency } from '@/lib/supabase/aliases';
+
+interface Props {
+  slug: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null;
+  urgency: Urgency;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  targetCents: number;
+  confirmedCents: number;
+}
+
+const {
+  slug,
+  title,
+  description,
+  imageUrl,
+  urgency,
+  categoryName,
+  targetCents,
+  confirmedCents,
+} = Astro.props;
+
+const tone = urgencyToTone(urgency);
+const urgencyAccent =
+  urgency === 'urgent' ? 'error' : urgency === 'high' ? 'tertiary' : 'secondary';
+const pct = progressPct(confirmedCents, targetCents);
+---
+
+<Card
+  as="article"
+  variant="default"
+  class="overflow-hidden flex flex-col group hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-300"
+>
+  <div class="relative h-48 w-full overflow-hidden bg-surface-variant">
+    {imageUrl ? (
+      <img
+        src={imageUrl}
+        alt={`Foto ilustrativa do projeto ${title}`}
+        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        width={400}
+        height={192}
+        loading="lazy"
+      />
+    ) : (
+      <div class="w-full h-full bg-gradient-to-br from-primary-container/20 via-secondary-container/30 to-surface-container flex items-center justify-center">
+        <Icon name="forest" size={48} class="text-primary-container/50" />
+      </div>
+    )}
+    <div class="absolute top-md right-md">
+      <Badge tone={tone} icon={urgency === 'urgent' ? 'priority_high' : undefined}>
+        {urgencyLabel(urgency)}
+      </Badge>
+    </div>
+    {categoryName && (
+      <div class="absolute top-md left-md">
+        <Badge tone="category">{categoryName}</Badge>
+      </div>
+    )}
+  </div>
+  <div class={`p-md flex-grow flex flex-col border-l-4 border-l-${urgencyAccent === 'error' ? 'error' : urgencyAccent === 'tertiary' ? 'tertiary-container' : 'secondary'}`}>
+    <h3 class="type-h3 text-on-surface mb-xs line-clamp-1">{title}</h3>
+    {description && (
+      <p class="type-body text-on-surface-variant mb-md line-clamp-2 flex-grow">
+        {description}
+      </p>
+    )}
+    <div class="mt-auto space-y-sm">
+      <div class="flex justify-between type-label">
+        <span class="text-secondary font-semibold">{pct}% Financiado</span>
+        <span class="text-on-surface-variant">
+          {formatBRL(confirmedCents)} / {formatBRL(targetCents)}
+        </span>
+      </div>
+      <ProgressBar currentCents={confirmedCents} targetCents={targetCents} size="sm" />
+      <a
+        href={`/doar/${slug}`}
+        class="w-full mt-md bg-primary-container text-on-primary type-label py-sm rounded-lg hover:opacity-90 transition-opacity flex justify-center items-center gap-2 shadow-cta"
+      >
+        <Icon name="hand_heart" size={16} />
+        Doar Agora
+      </a>
+    </div>
+  </div>
+</Card>

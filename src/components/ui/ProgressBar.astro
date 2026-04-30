@@ -1,0 +1,51 @@
+---
+import { cn } from '@/lib/utils';
+import { formatBRL, progressPct } from '@/lib/format/currency';
+
+interface Props {
+  currentCents: number;
+  targetCents: number;
+  showLabels?: boolean;
+  showAmounts?: boolean;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const {
+  currentCents,
+  targetCents,
+  showLabels = false,
+  showAmounts = false,
+  size = 'md',
+  class: className,
+} = Astro.props;
+
+const pct = progressPct(currentCents, targetCents);
+const exceeded = pct >= 100;
+const fillPct = Math.min(100, pct);
+
+const heightClass = size === 'sm' ? 'h-1.5' : 'h-2';
+const trackClass = 'bg-surface-container-high';
+const fillClass = exceeded ? 'bg-secondary' : 'bg-primary-container';
+---
+
+<div class={cn('flex flex-col gap-1', className)}>
+  {showLabels && (
+    <div class="flex justify-between font-medium type-label">
+      <span class={exceeded ? 'text-secondary' : 'text-secondary'}>
+        {pct}% {exceeded ? 'da meta + reserva' : 'financiado'}
+      </span>
+      {showAmounts && (
+        <span class="text-on-surface-variant">
+          {formatBRL(currentCents)}{' / '}{formatBRL(targetCents)}
+        </span>
+      )}
+    </div>
+  )}
+  <div class={cn('w-full rounded-full overflow-hidden relative', trackClass, heightClass)} role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+    <div class={cn('h-full rounded-full transition-[width] duration-500', fillClass)} style={`width: ${fillPct}%;`}></div>
+  </div>
+  {exceeded && pct > 100 && (
+    <p class="type-caption text-secondary">+{pct - 100}% direcionado à reserva global</p>
+  )}
+</div>

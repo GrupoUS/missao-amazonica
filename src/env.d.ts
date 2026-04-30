@@ -21,8 +21,8 @@ interface ImportMeta {
 
 declare namespace App {
   interface Locals {
-    supabase: import('@supabase/supabase-js').SupabaseClient<
-      import('@/lib/supabase/types').Database
+    supabase: ReturnType<
+      typeof import('@/lib/supabase/server').createSupabaseServer
     >;
     user: import('@supabase/supabase-js').User | null;
     isAdmin: boolean;

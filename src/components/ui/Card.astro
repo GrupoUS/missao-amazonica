@@ -1,0 +1,50 @@
+---
+import { cn } from '@/lib/utils';
+
+type Variant = 'default' | 'metric' | 'accountability' | 'modal';
+type Accent = 'primary' | 'secondary' | 'tertiary' | 'error' | 'outline' | 'none';
+
+interface Props {
+  variant?: Variant;
+  accent?: Accent;
+  class?: string;
+  as?: 'article' | 'section' | 'div';
+}
+
+const props = Astro.props as Props;
+const variant: Variant = props.variant ?? 'default';
+const accent: Accent = props.accent ?? 'none';
+const className = props.class;
+const as: 'article' | 'section' | 'div' = props.as ?? 'div';
+
+const baseClasses = 'bg-surface-container-lowest rounded-xl border border-outline-variant/30';
+
+const variantClasses: Record<Variant, string> = {
+  default: 'shadow-card',
+  metric: 'shadow-card border-l-4',
+  accountability: 'shadow-card border-l-[4px]',
+  modal: 'shadow-modal',
+};
+
+const accentClasses: Record<Accent, string> = {
+  primary: 'border-l-primary-container',
+  secondary: 'border-l-secondary',
+  tertiary: 'border-l-tertiary-container',
+  error: 'border-l-error',
+  outline: 'border-l-outline-variant',
+  none: '',
+};
+
+const classes = cn(
+  baseClasses,
+  variantClasses[variant satisfies Variant],
+  accent !== 'none' && accentClasses[accent satisfies Accent],
+  className,
+);
+
+const Tag = as;
+---
+
+<Tag class={classes}>
+  <slot />
+</Tag>

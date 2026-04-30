@@ -1,0 +1,70 @@
+---
+import Icon from './Icon.astro';
+import type { IconName } from '@/lib/icons';
+import { cn } from '@/lib/utils';
+
+type Tone =
+  | 'urgent'
+  | 'high'
+  | 'medium'
+  | 'low'
+  | 'success'
+  | 'neutral'
+  | 'category'
+  | 'info';
+
+interface Props {
+  tone?: Tone;
+  icon?: IconName;
+  size?: 'sm' | 'md';
+  class?: string;
+}
+
+const { tone = 'neutral', icon, size = 'sm', class: className } = Astro.props;
+
+const sizeClasses = {
+  sm: 'px-2 py-1 text-[12px]',
+  md: 'px-3 py-1.5 text-[13px]',
+}[size];
+
+const toneClasses: Record<Tone, string> = {
+  urgent: 'bg-error-container text-on-error-container',
+  high: 'bg-tertiary-fixed text-on-tertiary-fixed-variant',
+  medium: 'bg-secondary-container text-on-secondary-container',
+  low: 'bg-surface-container-high text-on-surface-variant',
+  success: 'bg-secondary-container text-on-secondary-container',
+  neutral: 'bg-surface-container text-on-surface-variant',
+  category: 'bg-surface-container-lowest/90 text-on-surface backdrop-blur-sm shadow-card',
+  info: 'bg-primary-container/10 text-primary-container',
+};
+
+const classes = cn(
+  'inline-flex items-center gap-1 rounded-full font-medium',
+  sizeClasses,
+  toneClasses[tone],
+  className,
+);
+---
+
+<span class={classes}>
+  {icon && <Icon name={icon} size={size === 'sm' ? 12 : 14} />}
+  <slot />
+</span>
+
+<script is:inline>
+  /* placeholder to suppress unused-warning when slot empty */
+</script>
+
+{/* Helpers exported for tone derivation. */}
+<style is:global></style>
+<script>
+  /* No-op */
+</script>
+
+<!--
+  Convenience tone mappers (used as TS-only re-exports — see helpers below).
+-->
+
+<style></style>
+
+{/* exposed to TS via a co-located .ts module if needed */}

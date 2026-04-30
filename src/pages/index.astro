@@ -1,0 +1,251 @@
+---
+import PublicLayout from '@/layouts/PublicLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Icon from '@/components/ui/Icon.astro';
+import ItemCard from '@/components/donation/ItemCard.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { asUrgency } from '@/lib/supabase/aliases';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+
+// Stats
+const { data: stats } = await admin
+  .from('landing_stats')
+  .select('total_raised_cents, projects_active, items_completed, reserve_cents, missions_active')
+  .maybeSingle();
+
+// Urgent items (3 most recent published, sorted by urgency desc + sort_order)
+const { data: urgentItemsRaw } = await admin
+  .from('donation_items')
+  .select(`
+    id, slug, title, description, image_url, urgency, target_amount_cents, sort_order,
+    categories(name, slug)
+  `)
+  .eq('status', 'published')
+  .order('urgency', { ascending: false })
+  .order('sort_order', { ascending: true })
+  .limit(3);
+
+const urgentItems = urgentItemsRaw ?? [];
+
+// Compute confirmed totals for those items
+const itemIds = urgentItems.map((i) => i.id);
+const { data: progress } = await admin
+  .from('item_progress')
+  .select('item_id, confirmed_amount_cents')
+  .in('item_id', itemIds.length ? itemIds : ['00000000-0000-0000-0000-000000000000']);
+
+const confirmedMap = new Map(
+  (progress ?? []).map((p) => [p.item_id, Number(p.confirmed_amount_cents ?? 0)]),
+);
+
+const totalRaised = Number(stats?.total_raised_cents ?? 0);
+const projectsActive = Number(stats?.projects_active ?? 0);
+const itemsCompleted = Number(stats?.items_completed ?? 0);
+const reserveCents = Number(stats?.reserve_cents ?? 0);
+---
+
+<PublicLayout
+  title="Missão Amazônica – Sal da Terra"
+  description="Levando esperança, saúde e dignidade para comunidades ribeirinhas do Rio Negro através de ações concretas e transparentes a cada abril."
+  activeNav="missao"
+>
+  <!-- Hero -->
+  <section class="relative h-[640px] flex items-center justify-center overflow-hidden">
+    <div class="absolute inset-0 z-0 bg-gradient-to-br from-primary via-primary-container to-secondary"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-background/95 via-background/70 to-background/30"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-1/2 hidden lg:block opacity-30 z-0">
+      <div class="w-full h-full bg-gradient-to-bl from-secondary-container/40 via-transparent to-transparent"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-8 flex flex-col items-start text-left">
+      <span class="inline-flex items-center gap-2 py-1 px-3 rounded-full bg-surface-container-lowest text-on-surface-variant type-label mb-lg shadow-card border border-outline-variant/30">
+        <Icon name="eco" size={14} class="text-secondary" />
+        Missão Sal da Terra · Abril/2026
+      </span>
+      <h1 class="font-display type-h1 text-on-background max-w-3xl mb-lg leading-tight">
+        Transformando vidas nas margens do Rio Negro.
+      </h1>
+      <p class="type-body-lg text-on-surface-variant max-w-2xl mb-xl">
+        Levando esperança, saúde e a palavra através de ações concretas
+        e transparentes nas comunidades ribeirinhas mais isoladas da Amazônia.
+      </p>
+      <div class="flex flex-wrap gap-md">
+        <a
+          href="/doar"
+          class="bg-primary-container text-on-primary px-8 py-3 rounded-lg type-label shadow-cta hover:opacity-90 transition-all inline-flex items-center gap-2"
+        >
+          Contribuir com a missão
+          <Icon name="arrow_forward" size={16} />
+        </a>
+        <a
+          href="/prestacao-de-contas"
+          class="border border-secondary text-secondary px-8 py-3 rounded-lg type-label hover:bg-surface-container-low transition-all inline-flex items-center gap-2"
+        >
+          Ver prestação de contas
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Trust Bar -->
+  <section class="bg-surface-container-lowest border-y border-outline-variant/30 py-md">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8 flex flex-wrap justify-between items-center gap-lg">
+      <div class="flex items-center gap-sm text-on-surface-variant type-body">
+        <Icon name="verified" size={20} class="text-secondary" />
+        <span>100% Transparência Financeira</span>
+      </div>
+      <div class="flex items-center gap-sm text-on-surface-variant type-body">
+        <Icon name="monitor_heart" size={20} class="text-secondary" />
+        <span>Relatórios Mensais de Impacto</span>
+      </div>
+      <div class="flex items-center gap-sm text-on-surface-variant type-body">
+        <Icon name="handshake" size={20} class="text-secondary" />
+        <span>Auditoria Independente</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Nossa Missão -->
+  <section id="missao" class="py-huge bg-background">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-huge items-center">
+        <div>
+          <h2 class="font-display type-h2 text-on-background mb-lg">Nossa Missão</h2>
+          <p class="type-body-lg text-on-surface-variant mb-md">
+            Acreditamos que a fé genuína se manifesta através do serviço ao próximo.
+            Nosso trabalho é focado em levar não apenas suprimentos físicos, mas
+            dignidade e esperança para as comunidades ribeirinhas do Rio Negro.
+          </p>
+          <p class="type-body text-on-surface-variant mb-xl">
+            Trabalhamos em parceria com líderes locais para identificar as necessidades
+            mais urgentes, desde acesso a água potável e cuidados médicos básicos, até
+            materiais educativos e apoio espiritual.
+          </p>
+          <div class="space-y-sm">
+            <div class="flex items-start gap-md">
+              <span class="text-secondary mt-1"><Icon name="favorite" size={20} /></span>
+              <div>
+                <h4 class="type-label text-on-surface mb-xs">Cuidado Integral</h4>
+                <p class="type-caption text-on-surface-variant">
+                  Atendendo necessidades físicas, emocionais e espirituais.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start gap-md">
+              <span class="text-secondary mt-1"><Icon name="groups" size={20} /></span>
+              <div>
+                <h4 class="type-label text-on-surface mb-xs">Foco na Comunidade</h4>
+                <p class="type-caption text-on-surface-variant">
+                  Empoderando líderes locais para um impacto sustentável.
+                </p>
+              </div>
+            </div>
+            <div class="flex items-start gap-md">
+              <span class="text-secondary mt-1"><Icon name="eco" size={20} /></span>
+              <div>
+                <h4 class="type-label text-on-surface mb-xs">Pegada Sustentável</h4>
+                <p class="type-caption text-on-surface-variant">
+                  Soluções de baixo impacto ambiental, adequadas ao bioma.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="relative">
+          <div class="absolute inset-0 bg-secondary/10 translate-x-4 translate-y-4 rounded-3xl -z-10"></div>
+          <div class="rounded-3xl shadow-card w-full aspect-[4/3] bg-gradient-to-br from-primary via-secondary to-primary-container flex items-center justify-center text-on-primary">
+            <div class="text-center px-md">
+              <Icon name="forest" size={56} class="mx-auto mb-md opacity-80" />
+              <p class="font-display text-2xl mb-2">Rio Negro · AM</p>
+              <p class="type-body opacity-80">Comunidades ribeirinhas atendidas anualmente</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Impacto em Números -->
+  <section id="impacto" class="py-huge bg-surface-container-low">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="text-center mb-xl">
+        <h2 class="font-display type-h2 text-on-background mb-sm">Impacto em Números</h2>
+        <p class="type-body text-on-surface-variant max-w-2xl mx-auto">
+          Resultados mensuráveis do nosso compromisso com as comunidades ribeirinhas.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-md">
+        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
+          <span class="text-primary-container mb-sm"><Icon name="payments" size={40} /></span>
+          <p class="font-display type-h2 text-on-surface mb-xs">{formatBRL(totalRaised, { compact: true })}</p>
+          <p class="type-label text-on-surface-variant">Arrecadado</p>
+        </Card>
+        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
+          <span class="text-primary-container mb-sm"><Icon name="forest" size={40} /></span>
+          <p class="font-display type-h2 text-on-surface mb-xs">{projectsActive}</p>
+          <p class="type-label text-on-surface-variant">Projetos Ativos</p>
+        </Card>
+        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
+          <span class="text-primary-container mb-sm"><Icon name="check_circle" size={40} /></span>
+          <p class="font-display type-h2 text-on-surface mb-xs">{itemsCompleted}</p>
+          <p class="type-label text-on-surface-variant">Concluídos</p>
+        </Card>
+        <Card variant="metric" accent="secondary" class="p-lg flex flex-col justify-center items-center text-center">
+          <span class="text-primary-container mb-sm"><Icon name="savings" size={40} /></span>
+          <p class="font-display type-h2 text-on-surface mb-xs">{formatBRL(reserveCents, { compact: true })}</p>
+          <p class="type-label text-on-surface-variant">Reserva Global</p>
+        </Card>
+      </div>
+    </div>
+  </section>
+
+  <!-- Itens Urgentes -->
+  <section class="py-huge bg-background">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="flex justify-between items-end mb-xl flex-wrap gap-md">
+        <div>
+          <h2 class="font-display type-h2 text-on-background mb-sm">Itens Urgentes</h2>
+          <p class="type-body text-on-surface-variant">
+            Apoie as necessidades imediatas para nossa próxima expedição.
+          </p>
+        </div>
+        <a
+          href="/doar"
+          class="hidden md:inline-flex text-secondary type-label items-center gap-2 hover:text-primary-container transition-colors"
+        >
+          Ver todas as campanhas <Icon name="arrow_forward" size={14} />
+        </a>
+      </div>
+      {urgentItems.length === 0 ? (
+        <p class="text-center type-body text-on-surface-variant py-xl">
+          Nenhum projeto urgente publicado no momento.
+        </p>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-lg">
+          {urgentItems.map((item) => (
+            <ItemCard
+              slug={item.slug}
+              title={item.title}
+              description={item.description}
+              imageUrl={item.image_url}
+              urgency={asUrgency(item.urgency)}
+              categoryName={item.categories?.name}
+              targetCents={item.target_amount_cents}
+              confirmedCents={confirmedMap.get(item.id) ?? 0}
+            />
+          ))}
+        </div>
+      )}
+      <a
+        href="/doar"
+        class="md:hidden w-full mt-lg text-secondary border border-secondary py-2 rounded-lg type-label inline-flex items-center justify-center gap-2 hover:bg-surface-container-low transition-colors"
+      >
+        Ver todas as campanhas
+      </a>
+    </div>
+  </section>
+</PublicLayout>

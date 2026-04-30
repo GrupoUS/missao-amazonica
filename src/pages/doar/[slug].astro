@@ -1,0 +1,224 @@
+---
+import PublicLayout from '@/layouts/PublicLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import ProgressBar from '@/components/ui/ProgressBar.astro';
+import Icon from '@/components/ui/Icon.astro';
+import RecentDonors from '@/components/donation/RecentDonors.astro';
+import { DonationForm } from '@/components/donation/DonationForm';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import {
+  asUrgency,
+  type AccountabilityStatus,
+} from '@/lib/supabase/aliases';
+import {
+  urgencyToTone,
+  urgencyLabel,
+  accountabilityToTone,
+  accountabilityLabel,
+} from '@/components/ui/badge-helpers';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+if (!slug) return Astro.redirect('/doar', 302);
+
+const admin = getSupabaseAdmin();
+const { data: item } = await admin
+  .from('donation_items')
+  .select(`
+    id, slug, title, description, image_url, urgency, target_amount_cents, status,
+    categories(name, slug)
+  `)
+  .eq('slug', slug)
+  .maybeSingle();
+
+if (!item || item.status !== 'published') {
+  return Astro.redirect('/doar?notfound=1', 302);
+}
+
+// Confirmed total
+const { data: progressRow } = await admin
+  .from('item_progress')
+  .select('confirmed_amount_cents')
+  .eq('item_id', item.id)
+  .maybeSingle();
+const confirmedCents = Number(progressRow?.confirmed_amount_cents ?? 0);
+
+// Public donors for this item
+const { data: donors } = await admin
+  .from('public_donor_list')
+  .select('id, item_id, donor_name, amount_cents, confirmed_at')
+  .eq('item_id', item.id)
+  .order('confirmed_at', { ascending: false })
+  .limit(8);
+
+// Updates / accountability for this item
+const { data: updates } = await admin
+  .from('accountability_entries')
+  .select('id, title, description, status, media_url, proof_url, created_at')
+  .eq('item_id', item.id)
+  .eq('is_public', true)
+  .order('created_at', { ascending: false })
+  .limit(5);
+
+// Related items
+const { data: related } = await admin
+  .from('donation_items')
+  .select('id, slug, title')
+  .eq('status', 'published')
+  .neq('id', item.id)
+  .limit(4);
+
+const urgency = asUrgency(item.urgency);
+const tone = urgencyToTone(urgency);
+---
+
+<PublicLayout
+  title={item.title}
+  description={item.description ?? undefined}
+  activeNav="projetos"
+>
+  <section class="w-full max-w-7xl mx-auto px-6 py-12">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <!-- Left: content -->
+      <div class="lg:col-span-8 flex flex-col gap-lg">
+        <div class="flex items-center gap-2 type-caption text-on-surface-variant">
+          <a href="/doar" class="hover:text-primary-container">Projetos</a>
+          <Icon name="chevron_right" size={12} />
+          <span class="text-on-surface">{item.title}</span>
+        </div>
+        <h1 class="font-display type-h1 text-on-surface">{item.title}</h1>
+        <div class="flex flex-wrap items-center gap-2">
+          <Badge tone={tone} icon={urgency === 'urgent' ? 'priority_high' : undefined}>
+            {urgencyLabel(urgency)}
+          </Badge>
+          {item.categories?.name && (
+            <Badge tone="info">{item.categories.name}</Badge>
+          )}
+        </div>
+
+        <div class="rounded-3xl overflow-hidden aspect-video bg-surface-container w-full">
+          {item.image_url ? (
+            <img
+              src={item.image_url}
+              alt={`Imagem ilustrativa de ${item.title}`}
+              class="w-full h-full object-cover"
+              width={1024}
+              height={576}
+              loading="eager"
+              fetchpriority="high"
+            />
+          ) : (
+            <div class="w-full h-full bg-gradient-to-br from-primary-container to-secondary flex items-center justify-center">
+              <Icon name="forest" size={64} class="text-on-primary opacity-60" />
+            </div>
+          )}
+        </div>
+
+        {item.description && (
+          <div class="prose max-w-none type-body-lg text-on-surface-variant whitespace-pre-line">
+            {item.description}
+          </div>
+        )}
+
+        <Card class="bg-surface-container-low border-l-4 border-l-secondary p-md">
+          <div class="flex items-start gap-md">
+            <span class="text-secondary mt-1">
+              <Icon name="savings" size={24} />
+            </span>
+            <div>
+              <h3 class="type-label text-on-surface mb-1">Excedente vai para a reserva global</h3>
+              <p class="type-caption text-on-surface-variant">
+                Se as doações ultrapassarem a meta deste projeto, o valor excedente é
+                automaticamente direcionado à <a href="/prestacao-de-contas" class="text-secondary underline">Reserva Global</a>,
+                usada em emergências da missão.
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <!-- Atualizações -->
+        <div class="mt-xl border-t border-outline-variant/40 pt-lg">
+          <h3 class="font-display type-h3 text-on-surface mb-md">Atualizações do Projeto</h3>
+          {(!updates || updates.length === 0) ? (
+            <p class="type-body text-on-surface-variant">
+              Em breve publicaremos as primeiras atualizações deste projeto.
+            </p>
+          ) : (
+            <ol class="flex flex-col gap-lg">
+              {updates.map((u) => {
+                const status = (u.status ?? 'planned') as AccountabilityStatus;
+                return (
+                  <li class="flex gap-md bg-surface-container-lowest p-md rounded-lg shadow-card border border-outline-variant/30 border-l-4 border-l-secondary">
+                    <div class="flex-shrink-0 text-secondary mt-1">
+                      <Icon name={status === 'delivered' ? 'check_circle' : status === 'purchased' ? 'shopping_cart' : status === 'completed' ? 'verified' : 'pending_actions'} size={20} />
+                    </div>
+                    <div>
+                      <div class="flex items-center gap-2 mb-xs">
+                        <Badge tone={accountabilityToTone(status)}>{accountabilityLabel(status)}</Badge>
+                      </div>
+                      <h4 class="type-body-lg font-semibold text-on-surface mb-1">{u.title}</h4>
+                      {u.description && (
+                        <p class="type-body text-on-surface-variant mb-1">{u.description}</p>
+                      )}
+                      {u.proof_url && (
+                        <a href={u.proof_url} target="_blank" rel="noopener" class="type-caption text-secondary inline-flex items-center gap-1 hover:underline">
+                          <Icon name="receipt_long" size={12} /> Comprovante
+                        </a>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+
+        {related && related.length > 0 && (
+          <div class="mt-xl border-t border-outline-variant/40 pt-lg">
+            <h3 class="font-display type-h3 text-on-surface mb-md">Outros projetos</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+              {related.map((r) => (
+                <a
+                  href={`/doar/${r.slug}`}
+                  class="bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-md hover:border-secondary transition-colors flex items-center justify-between gap-md"
+                >
+                  <span class="type-label text-on-surface">{r.title}</span>
+                  <Icon name="arrow_forward" size={14} class="text-secondary" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <!-- Right: sticky donation sidebar -->
+      <aside class="lg:col-span-4 relative">
+        <div class="sticky top-24 flex flex-col gap-lg">
+          <Card variant="modal" class="p-lg">
+            <div class="flex justify-between items-end mb-sm">
+              <span class="font-display type-h3 text-primary-container">{formatBRL(confirmedCents)}</span>
+              <span class="type-body text-on-surface-variant">arrecadados</span>
+            </div>
+            <ProgressBar
+              currentCents={confirmedCents}
+              targetCents={item.target_amount_cents}
+              showLabels
+              showAmounts
+            />
+            <div class="mt-lg">
+              <DonationForm
+                client:visible
+                itemId={item.id}
+                itemTitle={item.title}
+              />
+            </div>
+          </Card>
+          {donors && <RecentDonors donors={donors} />}
+        </div>
+      </aside>
+    </div>
+  </section>
+</PublicLayout>

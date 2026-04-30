@@ -1,0 +1,213 @@
+---
+import PublicLayout from '@/layouts/PublicLayout.astro';
+import Card from '@/components/ui/Card.astro';
+import Badge from '@/components/ui/Badge.astro';
+import Icon from '@/components/ui/Icon.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { formatBRL } from '@/lib/format/currency';
+import { formatDate } from '@/lib/format/date';
+import {
+  accountabilityToTone,
+  accountabilityLabel,
+} from '@/components/ui/badge-helpers';
+import { asAccountabilityStatus } from '@/lib/supabase/aliases';
+
+export const prerender = false;
+
+const admin = getSupabaseAdmin();
+
+const [{ data: stats }, { data: entries }, { data: reserveTotal }] = await Promise.all([
+  admin
+    .from('landing_stats')
+    .select('total_raised_cents, projects_active, items_completed, reserve_cents')
+    .maybeSingle(),
+  admin
+    .from('accountability_entries')
+    .select(`
+      id, title, description, amount_cents, proof_url, media_url, status, created_at, item_id,
+      donation_items(title, slug)
+    `)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false })
+    .limit(50),
+  admin.from('global_reserve_total').select('reserve_cents').maybeSingle(),
+]);
+
+const totalRaised = Number(stats?.total_raised_cents ?? 0);
+const reserveCents = Number(reserveTotal?.reserve_cents ?? stats?.reserve_cents ?? 0);
+const totalUsed = (entries ?? []).reduce(
+  (acc, e) => acc + (e.amount_cents ?? 0),
+  0,
+);
+---
+
+<PublicLayout
+  title="Transparência e Confiança"
+  description="Prestação de contas pública da Missão Amazônica – Sal da Terra. Cada recurso investido, comprovado."
+  activeNav="transparencia"
+>
+  <main class="w-full max-w-7xl mx-auto px-6 py-xl">
+    <section class="mb-huge text-center max-w-3xl mx-auto">
+      <h1 class="font-display type-h1 text-primary-container mb-md">Transparência e Confiança</h1>
+      <p class="type-body-lg text-on-surface-variant">
+        Nosso compromisso com a verdade. Acompanhe cada recurso investido na Missão Amazônica.
+      </p>
+    </section>
+
+    <!-- Quick stats -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-md mb-huge">
+      <Card variant="metric" accent="secondary" class="p-lg flex flex-col">
+        <p class="type-label text-on-surface-variant">Total arrecadado</p>
+        <p class="font-display type-h2 text-on-surface mt-2">{formatBRL(totalRaised)}</p>
+        <p class="type-caption text-secondary mt-1 inline-flex items-center gap-1">
+          <Icon name="trending_up" size={12} /> Doações confirmadas
+        </p>
+      </Card>
+      <Card variant="metric" accent="secondary" class="p-lg flex flex-col">
+        <p class="type-label text-on-surface-variant">Total usado</p>
+        <p class="font-display type-h2 text-on-surface mt-2">{formatBRL(totalUsed)}</p>
+        <p class="type-caption text-on-surface-variant mt-1">Soma das prestações públicas</p>
+      </Card>
+      <Card variant="metric" accent="secondary" class="p-lg flex flex-col">
+        <p class="type-label text-on-surface-variant">Reserva global</p>
+        <p class="font-display type-h2 text-on-surface mt-2">{formatBRL(reserveCents)}</p>
+        <p class="type-caption text-on-surface-variant mt-1 inline-flex items-center gap-1">
+          <Icon name="savings" size={12} /> Excedentes + emergências
+        </p>
+      </Card>
+    </section>
+
+    <!-- Accountability entries -->
+    <section class="mb-huge">
+      <h2 class="font-display type-h2 text-on-surface mb-xl border-b border-outline-variant/40 pb-sm">
+        Relatório de Prestação de Contas
+      </h2>
+      {(!entries || entries.length === 0) ? (
+        <EmptyState
+          icon="receipt_long"
+          title="Sem prestações de conta no momento"
+          description="Assim que houver gastos confirmados, eles aparecerão aqui com comprovantes e fotos."
+        />
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+          {entries.map((e) => {
+            const status = asAccountabilityStatus(e.status);
+            return (
+              <Card variant="accountability" accent={status === 'completed' || status === 'delivered' ? 'secondary' : status === 'purchased' ? 'tertiary' : 'outline'} class="p-lg flex flex-col gap-md">
+                <div class="flex justify-between items-start gap-sm">
+                  <h3 class="font-display type-h3 text-on-surface">{e.title}</h3>
+                  <Badge tone={accountabilityToTone(status)} icon={status === 'delivered' ? 'check_circle' : status === 'purchased' ? 'shopping_cart' : status === 'completed' ? 'verified' : 'pending_actions'}>
+                    {accountabilityLabel(status)}
+                  </Badge>
+                </div>
+                {e.description && (
+                  <p class="type-body text-on-surface-variant flex-grow">{e.description}</p>
+                )}
+                <dl class="grid grid-cols-2 gap-sm type-caption text-on-surface-variant">
+                  {e.amount_cents != null && (
+                    <div>
+                      <dt class="text-on-surface-variant/70">Valor</dt>
+                      <dd class="text-on-surface font-medium">{formatBRL(e.amount_cents)}</dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt class="text-on-surface-variant/70">Data</dt>
+                    <dd class="text-on-surface">{formatDate(e.created_at)}</dd>
+                  </div>
+                  {e.donation_items?.title && (
+                    <div class="col-span-2">
+                      <dt class="text-on-surface-variant/70">Projeto</dt>
+                      <dd>
+                        <a href={`/doar/${e.donation_items.slug}`} class="text-secondary hover:underline">
+                          {e.donation_items.title}
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                {(e.proof_url || e.media_url) && (
+                  <div class="flex gap-md border-t border-outline-variant/30 pt-sm">
+                    {e.proof_url && (
+                      <a href={e.proof_url} target="_blank" rel="noopener" class="flex items-center gap-1 type-label text-secondary hover:text-primary-container transition-colors">
+                        <Icon name="receipt_long" size={14} /> Comprovante
+                      </a>
+                    )}
+                    {e.media_url && (
+                      <a href={e.media_url} target="_blank" rel="noopener" class="flex items-center gap-1 type-label text-secondary hover:text-primary-container transition-colors">
+                        <Icon name="photo_camera" size={14} /> Mídia
+                      </a>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </section>
+
+    <!-- Reserva Global -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-huge mb-huge">
+      <Card class="p-xl bg-surface-container">
+        <div class="flex items-center gap-md mb-md">
+          <span class="text-primary-container"><Icon name="savings" size={28} /></span>
+          <h2 class="font-display type-h2 text-on-surface">Reserva Global</h2>
+        </div>
+        <p class="type-body text-on-surface-variant mb-md">
+          A transparência não se limita aos gastos previstos. Quando uma campanha
+          arrecada valores além da meta estipulada, o excedente é direcionado
+          para a nossa <strong>Reserva Global</strong>.
+        </p>
+        <p class="type-body text-on-surface-variant mb-md">Este fundo de emergência é estritamente utilizado para:</p>
+        <ul class="flex flex-col gap-sm mb-lg">
+          <li class="flex items-start gap-md">
+            <span class="text-secondary mt-1"><Icon name="eco" size={18} /></span>
+            <span class="type-body text-on-surface">Atendimento a emergências climáticas (enchentes ou secas extremas).</span>
+          </li>
+          <li class="flex items-start gap-md">
+            <span class="text-secondary mt-1"><Icon name="eco" size={18} /></span>
+            <span class="type-body text-on-surface">Manutenção não programada de embarcações missionárias.</span>
+          </li>
+          <li class="flex items-start gap-md">
+            <span class="text-secondary mt-1"><Icon name="eco" size={18} /></span>
+            <span class="type-body text-on-surface">Custos logísticos extraordinários devido a mudanças nos rios.</span>
+          </li>
+        </ul>
+        <div class="bg-surface-container-lowest p-md rounded-lg border border-outline-variant/30 flex justify-between items-center">
+          <span class="type-label text-on-surface-variant uppercase tracking-wider">Saldo Atual</span>
+          <span class="font-display type-h3 text-primary-container">{formatBRL(reserveCents)}</span>
+        </div>
+      </Card>
+
+      <Card class="p-xl">
+        <h2 class="font-display type-h2 text-on-surface border-b border-outline-variant/40 pb-sm mb-md">
+          Próximos passos
+        </h2>
+        <p class="type-body text-on-surface-variant mb-lg">
+          Os relatórios oficiais auditados ficam disponíveis aqui após cada
+          expedição. Inscreva-se ou acompanhe pelas redes da missão para receber
+          os PDFs assim que publicados.
+        </p>
+        <div class="flex flex-col gap-md">
+          <a
+            href="/doar"
+            class="bg-primary-container text-on-primary py-3 px-md rounded-lg type-label hover:opacity-90 transition-opacity flex items-center justify-between"
+          >
+            <span class="inline-flex items-center gap-2">
+              <Icon name="hand_heart" size={16} /> Apoiar uma campanha
+            </span>
+            <Icon name="arrow_forward" size={16} />
+          </a>
+          <a
+            href="mailto:contato@missaoamazonica.org"
+            class="border border-secondary text-secondary py-3 px-md rounded-lg type-label hover:bg-surface-container-low transition-colors flex items-center justify-between"
+          >
+            <span>Falar com a equipe financeira</span>
+            <Icon name="arrow_forward" size={16} />
+          </a>
+        </div>
+      </Card>
+    </section>
+  </main>
+</PublicLayout>

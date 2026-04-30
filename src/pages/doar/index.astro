@@ -1,0 +1,198 @@
+---
+import PublicLayout from '@/layouts/PublicLayout.astro';
+import ItemCard from '@/components/donation/ItemCard.astro';
+import Icon from '@/components/ui/Icon.astro';
+import EmptyState from '@/components/ui/EmptyState.astro';
+import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { asUrgency, type Urgency } from '@/lib/supabase/aliases';
+
+export const prerender = false;
+
+const url = new URL(Astro.request.url);
+const categorySlug = url.searchParams.get('categoria') ?? '';
+const urgencyFilter = url.searchParams.get('urgencia') ?? '';
+const searchQuery = url.searchParams.get('q')?.trim() ?? '';
+const sort = url.searchParams.get('ordem') ?? 'urgent';
+
+const admin = getSupabaseAdmin();
+
+// Categories for the filter pills
+const { data: categories } = await admin
+  .from('categories')
+  .select('id, name, slug, sort_order')
+  .order('sort_order', { ascending: true });
+
+let query = admin
+  .from('donation_items')
+  .select(`
+    id, slug, title, description, image_url, urgency, target_amount_cents, sort_order, created_at,
+    categories!inner(id, name, slug)
+  `)
+  .eq('status', 'published');
+
+if (categorySlug) {
+  query = query.eq('categories.slug', categorySlug);
+}
+if (urgencyFilter && ['low', 'medium', 'high', 'urgent'].includes(urgencyFilter)) {
+  query = query.eq('urgency', urgencyFilter);
+}
+if (searchQuery) {
+  query = query.ilike('title', `%${searchQuery}%`);
+}
+
+if (sort === 'newest') {
+  query = query.order('created_at', { ascending: false });
+} else if (sort === 'progress') {
+  query = query.order('sort_order', { ascending: true });
+} else {
+  query = query.order('urgency', { ascending: false }).order('sort_order', { ascending: true });
+}
+
+const { data: itemsRaw } = await query;
+const items = itemsRaw ?? [];
+
+const itemIds = items.map((i) => i.id);
+const { data: progress } = await admin
+  .from('item_progress')
+  .select('item_id, confirmed_amount_cents')
+  .in('item_id', itemIds.length ? itemIds : ['00000000-0000-0000-0000-000000000000']);
+
+const confirmedMap = new Map(
+  (progress ?? []).map((p) => [p.item_id, Number(p.confirmed_amount_cents ?? 0)]),
+);
+
+const URGENCY_OPTIONS: Array<{ value: Urgency | ''; label: string }> = [
+  { value: '', label: 'Qualquer prioridade' },
+  { value: 'urgent', label: 'Urgente' },
+  { value: 'high', label: 'Alta' },
+  { value: 'medium', label: 'Média' },
+  { value: 'low', label: 'Baixa' },
+];
+---
+
+<PublicLayout
+  title="Apoie nossos projetos"
+  description="Lista de projetos ativos com necessidades imediatas para a comunidade do Rio Negro."
+  activeNav="projetos"
+>
+  <section class="w-full max-w-7xl mx-auto px-6 py-xl">
+    <header class="mb-xl flex flex-col md:flex-row justify-between items-start md:items-end gap-lg">
+      <div class="max-w-2xl">
+        <h1 class="font-display type-h1 text-on-surface mb-sm">Apoie nossos projetos</h1>
+        <p class="type-body-lg text-on-surface-variant">
+          Sua doação direta constrói escolas, fornece suprimentos médicos e garante
+          alimentação para comunidades ribeirinhas na Amazônia.
+        </p>
+      </div>
+    </header>
+
+    <form
+      method="get"
+      class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-md mb-xl shadow-card flex flex-wrap gap-md items-center justify-between"
+    >
+      <div class="flex flex-wrap gap-md items-center w-full md:w-auto">
+        <div class="flex items-center gap-sm">
+          <Icon name="filter_list" size={16} class="text-outline" />
+          <span class="type-label text-on-surface-variant">Filtros:</span>
+        </div>
+
+        <div class="relative">
+          <select
+            name="categoria"
+            class="appearance-none bg-surface-container-low border border-transparent hover:border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl type-label text-on-surface cursor-pointer transition-colors outline-none"
+          >
+            <option value="">Todas as categorias</option>
+            {categories?.map((c) => (
+              <option value={c.slug} selected={c.slug === categorySlug}>{c.name}</option>
+            ))}
+          </select>
+          <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+            <Icon name="expand_more" size={14} />
+          </span>
+        </div>
+
+        <div class="relative">
+          <select
+            name="urgencia"
+            class="appearance-none bg-surface-container-low border border-transparent hover:border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl type-label text-on-surface cursor-pointer transition-colors outline-none"
+          >
+            {URGENCY_OPTIONS.map((u) => (
+              <option value={u.value} selected={u.value === urgencyFilter}>{u.label}</option>
+            ))}
+          </select>
+          <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+            <Icon name="expand_more" size={14} />
+          </span>
+        </div>
+
+        <div class="relative">
+          <select
+            name="ordem"
+            class="appearance-none bg-surface-container-low border border-transparent hover:border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-md pr-xl type-label text-on-surface cursor-pointer transition-colors outline-none"
+          >
+            <option value="urgent" selected={sort === 'urgent'}>Mais urgente</option>
+            <option value="progress" selected={sort === 'progress'}>Maior progresso</option>
+            <option value="newest" selected={sort === 'newest'}>Mais recente</option>
+          </select>
+          <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-outline">
+            <Icon name="expand_more" size={14} />
+          </span>
+        </div>
+      </div>
+
+      <div class="relative w-full md:w-64">
+        <Icon name="search" size={16} class="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
+        <input
+          type="search"
+          name="q"
+          value={searchQuery}
+          placeholder="Buscar projeto…"
+          class="w-full bg-surface-container-low border border-transparent focus:border-secondary focus:ring-1 focus:ring-secondary rounded-lg py-sm pl-9 pr-md type-body text-on-surface placeholder:text-outline outline-none transition-colors"
+        />
+      </div>
+
+      <button
+        type="submit"
+        class="hidden md:inline-flex bg-primary-container text-on-primary px-md py-sm rounded-lg type-label hover:opacity-90"
+      >
+        Aplicar
+      </button>
+      <button
+        type="submit"
+        class="md:hidden w-full bg-primary-container text-on-primary px-md py-sm rounded-lg type-label hover:opacity-90"
+      >
+        Aplicar filtros
+      </button>
+    </form>
+
+    {items.length === 0 ? (
+      <EmptyState
+        icon="search"
+        title="Nenhum projeto encontrado"
+        description="Ajuste os filtros ou volte mais tarde para ver novos projetos."
+      >
+        <a
+          href="/doar"
+          class="bg-primary-container text-on-primary type-label px-md py-sm rounded-lg hover:opacity-90"
+        >
+          Limpar filtros
+        </a>
+      </EmptyState>
+    ) : (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
+        {items.map((item) => (
+          <ItemCard
+            slug={item.slug}
+            title={item.title}
+            description={item.description}
+            imageUrl={item.image_url}
+            urgency={asUrgency(item.urgency)}
+            categoryName={item.categories?.name}
+            targetCents={item.target_amount_cents}
+            confirmedCents={confirmedMap.get(item.id) ?? 0}
+          />
+        ))}
+      </div>
+    )}
+  </section>
+</PublicLayout>
